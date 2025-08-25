@@ -1,8 +1,10 @@
+// app/page.tsx
 export default function Home() {
   return (
-    <main style={{ padding: "20px" }}>
-      <h1>Bem-vindo ao RadarCripto.space 🚀</h1>
-      <p>Use o menu para acessar o simulador.</p>
+    <main className="container">
+      <h1>RadarCripto.space</h1>
+      <p>Bem-vindo! Acesse o simulador:</p>
+      <p><a className="badge" href="/simulador">/simulador</a></p>
     </main>
   );
 }
