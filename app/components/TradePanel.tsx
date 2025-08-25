@@ -1,145 +1,76 @@
 "use client";
 
-import { useState, useMemo } from "react";
+// app/components/TradePanel.tsx
+import { useState } from "react";
 
-export type Symbol = "BTCUSDT" | "ETHUSDT" | "SOLUSDT" | "BNBUSDT";
+export type Pair = "BTCUSDT" | "ETHUSDT" | "SOLUSDT" | "BNBUSDT";
 
 type Props = {
-  symbol: Symbol;
+  symbol: Pair;
+  onChangeSymbol?: (pair: Pair) => void;
   onBuy?: (qty: number) => void;
   onSell?: (qty: number) => void;
   onCloseAll?: () => void;
+  onReset?: () => void;
 };
 
 export default function TradePanel({
   symbol,
+  onChangeSymbol,
   onBuy,
   onSell,
   onCloseAll,
+  onReset,
 }: Props) {
-  const [qty, setQty] = useState<number>(0.1);
+  const [qty, setQty] = useState(0.1);
 
-  const title = useMemo(() => {
-    const mapName: Record<Symbol, string> = {
-      BTCUSDT: "Bitcoin",
-      ETHUSDT: "Ethereum",
-      SOLUSDT: "Solana",
-      BNBUSDT: "BNB",
-    };
-    return `${mapName[symbol]} (${symbol})`;
-  }, [symbol]);
-
-  function buy() {
-    onBuy ? onBuy(qty) : console.log("BUY", symbol, qty);
-  }
-  function sell() {
-    onSell ? onSell(qty) : console.log("SELL", symbol, qty);
-  }
-  function closeAll() {
-    onCloseAll ? onCloseAll() : console.log("CLOSE ALL", symbol);
-  }
+  const pairs: Pair[] = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT"];
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gap: 8,
-        gridTemplateColumns: "repeat(12, 1fr)",
-        alignItems: "center",
-        background: "#12151a",
-        border: "1px solid #27272a",
-        borderRadius: 12,
-        padding: 12,
-      }}
-    >
-      <div style={{ gridColumn: "span 12", fontWeight: 600, color: "#e8eef6" }}>
-        {title}
-      </div>
+    <div className="card">
+      <div className="row" style={{ alignItems: "center" }}>
+        <div className="col">
+          <strong>Par:</strong>
+          <div className="tabs" style={{ marginTop: 8 }}>
+            {pairs.map((p) => (
+              <button
+                key={p}
+                className={`tab ${symbol === p ? "active" : ""}`}
+                onClick={() => onChangeSymbol?.(p)}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      {/* quantidade */}
-      <label style={{ gridColumn: "span 2", fontSize: 14, color: "#a1a1aa" }}>
-        Quantidade
-      </label>
-      <input
-        value={qty}
-        onChange={(e) => setQty(Number(e.target.value) || 0)}
-        type="number"
-        step="0.1"
-        min="0"
-        style={{
-          gridColumn: "span 3",
-          padding: "8px 10px",
-          borderRadius: 8,
-          border: "1px solid #2a2a2a",
-          background: "#0f1216",
-          color: "#e8eef6",
-          outline: "none",
-        }}
-      />
+        <div className="col">
+          <strong>Quantidade</strong>
+          <div className="tabs" style={{ marginTop: 8 }}>
+            {[0.1, 0.5, 1, 5].map((v) => (
+              <button key={v} className="tab" onClick={() => setQty(v)}>{v}</button>
+            ))}
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <input
+              type="number"
+              step="0.1"
+              value={qty}
+              onChange={(e) => setQty(Number(e.target.value))}
+              style={{
+                width: 120, padding: 8, background: "#0b1219", color: "#e8eef6",
+                border: "1px solid #2a3440", borderRadius: 8,
+              }}
+            />
+          </div>
+        </div>
 
-      {/* presets */}
-      <div style={{ gridColumn: "span 7", display: "flex", gap: 6 }}>
-        {[0.1, 0.5, 1, 5].map((v) => (
-          <button
-            key={v}
-            onClick={() => setQty(v)}
-            style={{
-              padding: "8px 10px",
-              borderRadius: 8,
-              border: "1px solid #2a2a2a",
-              background: qty === v ? "#1f2937" : "#0f1216",
-              cursor: "pointer",
-            }}
-          >
-            {v}
-          </button>
-        ))}
-      </div>
-
-      {/* ações */}
-      <div style={{ gridColumn: "span 12", display: "flex", gap: 8, marginTop: 4 }}>
-        <button
-          onClick={buy}
-          style={{
-            flex: 1,
-            padding: "10px 12px",
-            borderRadius: 10,
-            border: "1px solid #064e3b",
-            background: "#065f46",
-            color: "#e8eef6",
-            cursor: "pointer",
-          }}
-        >
-          Comprar
-        </button>
-        <button
-          onClick={sell}
-          style={{
-            flex: 1,
-            padding: "10px 12px",
-            borderRadius: 10,
-            border: "1px solid #7f1d1d",
-            background: "#991b1b",
-            color: "#e8eef6",
-            cursor: "pointer",
-          }}
-        >
-          Vender
-        </button>
-        <button
-          onClick={closeAll}
-          style={{
-            width: 160,
-            padding: "10px 12px",
-            borderRadius: 10,
-            border: "1px solid #2a2a2a",
-            background: "#0f1216",
-            color: "#e8eef6",
-            cursor: "pointer",
-          }}
-        >
-          Fechar posição
-        </button>
+        <div className="col" style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+          <button className="btn btn-green" onClick={() => onBuy?.(qty)}>Comprar</button>
+          <button className="btn btn-red" onClick={() => onSell?.(qty)}>Vender</button>
+          <button className="btn btn-gray" onClick={() => onCloseAll?.()}>Fechar posição</button>
+          <button className="btn btn-gray" onClick={() => onReset?.()}>Resetar</button>
+        </div>
       </div>
     </div>
   );
