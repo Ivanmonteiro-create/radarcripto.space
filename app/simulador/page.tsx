@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import TradePanel from "../../components/TradePanel";
-import IframeChart from "../../components/IframeChart";
-type Pair = "BTCUSDT" | "ETHUSDT" | "SOLUSDT" | "BNBUSDT";
+import TradePanel from "@/components/TradePanel";
+import IframeChart from "@/components/IframeChart";type Pair = "BTCUSDT" | "ETHUSDT" | "SOLUSDT" | "BNBUSDT";
 type TVInterval = "1" | "5" | "15" | "60" | "240";
 
 export default function Page() {
