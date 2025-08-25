@@ -1,7 +1,8 @@
 "use client";
 
+// app/components/IframeChart.tsx
 type Symbol = "BTCUSDT" | "ETHUSDT" | "SOLUSDT" | "BNBUSDT";
-type TvInterval = "1" | "5" | "15" | "60" | "240";
+type TvInterval = "1m" | "5m" | "15m" | "1h" | "4h";
 
 const TV_SYMBOL: Record<Symbol, string> = {
   BTCUSDT: "BINANCE:BTCUSDT",
@@ -11,45 +12,37 @@ const TV_SYMBOL: Record<Symbol, string> = {
 };
 
 const TV_INTERVAL: Record<TvInterval, string> = {
-  "1": "1",
-  "5": "5",
-  "15": "15",
-  "60": "60",
-  "240": "240",
+  "1m": "1",
+  "5m": "5",
+  "15m": "15",
+  "1h": "60",
+  "4h": "240",
 };
 
 export default function IframeChart({
   symbol,
   interval,
-  height = 680,
+  height = 600,
 }: {
   symbol: Symbol;
   interval: TvInterval;
   height?: number;
 }) {
-  const tvSym = TV_SYMBOL[symbol];
-  const tvInt = TV_INTERVAL[interval];
+  const s = encodeURIComponent(TV_SYMBOL[symbol]);
+  const i = TV_INTERVAL[interval];
 
-  // iframe oficial (embed widget TV)
   const src =
-    "https://s.tradingview.com/widgetembed/?" +
-    `symbol=${encodeURIComponent(tvSym)}` +
-    `&interval=${encodeURIComponent(tvInt)}` +
-    "&theme=dark&style=1&timezone=Etc/UTC" +
-    "&withdateranges=1&hide_side_toolbar=0&allow_symbol_change=1&saveimage=0";
+    "https://s.tradingview.com/widgetembed/?frameElementId=tradingview_"
+    + "&symbol=" + s
+    + "&interval=" + i
+    + "&hide_top_toolbar=1&hide_legend=0&theme=dark&style=1&timezone=Etc%2FUTC&withdateranges=1&allow_symbol_change=1&saveimage=0";
 
   return (
     <iframe
       title="TradingView Chart"
       src={src}
-      style={{
-        width: "100%",
-        height,
-        border: "1px solid #27272a",
-        borderRadius: 12,
-      }}
-      frameBorder={0}
-      allow="clipboard-write; fullscreen; autoplay; encrypted-media"
+      style={{ width: "100%", height, border: "1px solid #27303a", borderRadius: 12 }}
+      allowFullScreen
     />
   );
 }
