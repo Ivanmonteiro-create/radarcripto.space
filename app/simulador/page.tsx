@@ -4,13 +4,12 @@ import { useMemo, useState } from "react";
 import TVChart from "../components/TVChart";
 import TradePanel from "../components/TradePanel";
 
-/** ===== EXCHANGES E PARES ===== */
 const EXCHANGES = ["BINANCE", "BITSTAMP"] as const;
 type Exchange = (typeof EXCHANGES)[number];
 
 const PAIRS: Record<Exchange, string[]> = {
   BINANCE: ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT"],
-  BITSTAMP: ["BTCUSD", "ETHUSD", "XRPUSD"], // pares comuns na Bitstamp
+  BITSTAMP: ["BTCUSD", "ETHUSD", "XRPUSD"],
 };
 
 const INTERVALS = [
@@ -33,7 +32,6 @@ export default function SimuladorPage() {
 
   return (
     <main style={container(panelLeft)}>
-      {/* BARRA DE CONTROLES */}
       <div style={controlsBar}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Select
@@ -65,7 +63,6 @@ export default function SimuladorPage() {
         </button>
       </div>
 
-      {/* LAYOUT: PAINEL + GRÁFICO */}
       {panelLeft ? (
         <>
           <aside style={aside}>
@@ -92,8 +89,6 @@ export default function SimuladorPage() {
     </main>
   );
 }
-
-/* ====================== COMPONENTES DE UI ====================== */
 
 function Select({
   label,
@@ -132,13 +127,13 @@ function HeaderSymbol({ text }: { text: string }) {
   );
 }
 
-/* ====================== ESTILOS ====================== */
+/* ===== estilos ===== */
 
 const container = (panelLeft: boolean): React.CSSProperties => ({
-  height: "100vh", // ocupa a viewport inteira
+  height: "100vh",
   display: "grid",
   gridTemplateRows: "auto 1fr",
-  gridTemplateColumns: panelLeft ? "420px 1fr" : "1fr 420px", // painel maior
+  gridTemplateColumns: panelLeft ? "560px 1fr" : "1fr 560px", // << PAINEL MAIOR
   gap: 12,
   padding: 12,
   boxSizing: "border-box",
@@ -178,8 +173,7 @@ const selectInput: React.CSSProperties = {
 };
 
 const btnPrimary: React.CSSProperties = {
-  background:
-    "linear-gradient(180deg, rgba(54,151,255,1) 0%, rgba(31,111,235,1) 100%)",
+  background: "linear-gradient(180deg,#3697ff 0%, #1f6feb 100%)",
   border: "1px solid #1f6feb",
   color: "#fff",
   borderRadius: 12,
@@ -202,11 +196,11 @@ const aside: React.CSSProperties = {
 const panelTitle: React.CSSProperties = {
   margin: "0 0 10px",
   color: "#d6e5ff",
-  letterSpacing: .3,
+  letterSpacing: 0.3,
 };
 
 const chartBox: React.CSSProperties = {
-  minHeight: 0, // importante para grid não “estourar” a altura
+  minHeight: 0,
   height: "100%",
   background: "#0f1216",
   border: "1px solid #29313a",
@@ -224,8 +218,7 @@ const symbolHeader: React.CSSProperties = {
   fontSize: 12,
 };
 
-/* helper apenas para mostrar o label do intervalo no header */
 function labelFromInterval(v: string) {
-  const found = INTERVALS.find((i) => i.v === v);
-  return found ? found.label : v;
+  const map: Record<string, string> = { "1": "1m", "5": "5m", "15": "15m", "60": "1h", "240": "4h", D: "1D" };
+  return map[v] ?? v;
 }
