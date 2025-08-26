@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://radarcripto.space/sitemap.xml
