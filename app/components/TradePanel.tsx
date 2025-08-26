@@ -5,46 +5,38 @@ import { useMemo, useState } from "react";
 type Fill = { time: string; side: "BUY" | "SELL"; qty: number; price: number };
 
 export default function TradePanel() {
-  const [credits, setCredits] = useState<number>(100000); // créditos da “conta demo”
+  const [credits, setCredits] = useState<number>(100000); // “saldo” da conta demo
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
   const [qty, setQty] = useState<number>(1);
   const [price, setPrice] = useState<number>(10000);
   const [fills, setFills] = useState<Fill[]>([]);
-  const [pos, setPos] = useState<number>(0); // positivo comprado, negativo vendido
+  const [pos, setPos] = useState<number>(0); // + long / - short
   const [avg, setAvg] = useState<number>(0);
 
-  const realized = useMemo(() => {
-    // lucro realizado é resultado de fills que fecharam posição
-    // para simples demo, vamos usar a diferença entre créditos atuais e créditos iniciais
-    return credits - 100000;
-  }, [credits]);
+  const realized = useMemo(() => credits - 100000, [credits]); // ganho acumulado da simulação
 
   function now() {
     return new Date().toLocaleTimeString("pt-BR", { hour12: false });
   }
-
   function addFill(f: Fill) {
     setFills((prev) => [f, ...prev].slice(0, 100));
   }
 
   function buy() {
     if (qty <= 0 || price <= 0) return;
-    const cost = qty * price;
-    if (credits < cost) return; // sem saldo
+    if (credits < qty * price && pos >= 0) return;
 
-    // se posição negativa (short), primeiro fecha até zerar
     let remaining = qty;
+
     if (pos < 0) {
       const closeQty = Math.min(remaining, Math.abs(pos));
-      // fechar short: lucros/perdas entram nos créditos
-      const pnl = (avg - price) * closeQty;
+      const pnl = (avg - price) * closeQty; // fechar short
       setCredits((c) => c + pnl);
       setPos((p) => p + closeQty);
       remaining -= closeQty;
       addFill({ time: now(), side: "BUY", qty: closeQty, price });
     }
 
-    // qualquer resto abre/expande long
     if (remaining > 0) {
       const newCost = avg * Math.max(pos, 0) + price * remaining;
       const newQty = Math.max(pos, 0) + remaining;
@@ -58,25 +50,23 @@ export default function TradePanel() {
   function sell() {
     if (qty <= 0 || price <= 0) return;
 
-    // se posição positiva (long), primeiro fecha até zerar
     let remaining = qty;
+
     if (pos > 0) {
       const closeQty = Math.min(remaining, pos);
-      const pnl = (price - avg) * closeQty;
+      const pnl = (price - avg) * closeQty; // fechar long
       setCredits((c) => c + pnl);
       setPos((p) => p - closeQty);
       remaining -= closeQty;
       addFill({ time: now(), side: "SELL", qty: closeQty, price });
     }
 
-    // resto abre/expande short
     if (remaining > 0) {
       const newCost = avg * Math.max(-pos, 0) + price * remaining;
       const newQty = Math.max(-pos, 0) + remaining;
       setAvg(newCost / newQty);
       setPos((p) => p - remaining);
-      // vender a descoberto “injeta” créditos como resultado da venda
-      setCredits((c) => c + remaining * price);
+      setCredits((c) => c + remaining * price); // venda a descoberto
       addFill({ time: now(), side: "SELL", qty: remaining, price });
     }
   }
@@ -93,19 +83,30 @@ export default function TradePanel() {
 
   return (
     <div style={panel}>
-
-      {/* saldo / créditos */}
-      <div style={cardWide}>
-        <div style={rowSpace}>
-          <div>
-            <div style={label}>Créditos</div>
-            <div style={money}>{credits.toLocaleString("pt-BR", { style: "currency", currency: "USD" })}</div>
+      {/* Destaque: saldo e ganhos + CTA */}
+      <div style={heroCard}>
+        <div>
+          <div style={badge}>Conta Demo</div>
+          <div style={heroRow}>
+            <div>
+              <div style={label}>Créditos</div>
+              <div style={money}>
+                {credits.toLocaleString("pt-BR", { style: "currency", currency: "USD" })}
+              </div>
+            </div>
+            <div>
+              <div style={label}>Lucro Realizado</div>
+              <div style={{ ...money, color: realized >= 0 ? "#42d392" : "#ff6b6b" }}>
+                {realized.toLocaleString("pt-BR", { style: "currency", currency: "USD" })}
+              </div>
+            </div>
           </div>
-          <button style={btnSoft} onClick={resetAll}>Resetar Conta</button>
         </div>
+
+        <a href="/planos" style={ctaBtn}>Comprar Plano</a>
       </div>
 
-      {/* ordem */}
+      {/* Ordem */}
       <div style={card}>
         <div style={grid2}>
           <label style={field}>
@@ -128,25 +129,21 @@ export default function TradePanel() {
         <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
           <button style={btnBuy} onClick={buy}>Buy</button>
           <button style={btnSell} onClick={sell}>Sell</button>
-          <button style={btnSoft} onClick={() => { setQty(1); setPrice(10000); }}>Reset</button>
+          <button style={btnSoft} onClick={resetAll}>Resetar Conta</button>
         </div>
       </div>
 
-      {/* posição atual */}
+      {/* Posição */}
       <div style={card}>
         <div style={label}>Posição</div>
-        <div style={{ display: "flex", gap: 14, alignItems: "baseline" }}>
+        <div style={{ display: "flex", gap: 14, alignItems: "baseline", flexWrap: "wrap" }}>
           <span style={{ fontSize: 22, color: "#e8f1ff", fontWeight: 700 }}>
-            {pos} {pos === 0 ? "" : pos > 0 ? "(Long)" : "(Short)"}
-          </span>
-          <span style={{ color: "#87a6ff" }}>Preço Médio: {avg ? avg.toFixed(2) : "-"}</span>
-          <span style={{ color: realized >= 0 ? "#42d392" : "#ff6b6b" }}>
-            PnL Realizado: {realized.toFixed(2)}
+            {pos} {pos === 0 ? "" : pos > 0 ? "(Long)" : "(Short)"} — Preço Médio: {avg ? avg.toFixed(2) : "-"}
           </span>
         </div>
       </div>
 
-      {/* fills */}
+      {/* Fills */}
       <div style={card}>
         <div style={label}>Fills</div>
         <div style={fillsHead}>
@@ -171,12 +168,53 @@ export default function TradePanel() {
   );
 }
 
-/* ===== estilos ===== */
+/* ----- estilos ----- */
 
 const panel: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr",
   gap: 12,
+};
+
+const heroCard: React.CSSProperties = {
+  background: "linear-gradient(180deg,#0a1624 0%,#09121c 100%)",
+  border: "1px solid #2a3340",
+  borderRadius: 12,
+  padding: 14,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+};
+
+const badge: React.CSSProperties = {
+  display: "inline-block",
+  background: "#13233a",
+  color: "#89b4ff",
+  fontSize: 11,
+  letterSpacing: .3,
+  padding: "3px 8px",
+  borderRadius: 999,
+  border: "1px solid #27416e",
+  marginBottom: 6,
+};
+
+const heroRow: React.CSSProperties = {
+  display: "flex",
+  gap: 28,
+  alignItems: "center",
+  flexWrap: "wrap",
+};
+
+const ctaBtn: React.CSSProperties = {
+  background: "linear-gradient(180deg,#ffd166 0%,#f59e0b 100%)",
+  color: "#1b1302",
+  padding: "10px 14px",
+  borderRadius: 10,
+  fontWeight: 800,
+  border: "1px solid #d97706",
+  textDecoration: "none",
+  boxShadow: "0 8px 18px rgba(249, 115, 22, .35)",
 };
 
 const card: React.CSSProperties = {
@@ -186,17 +224,6 @@ const card: React.CSSProperties = {
   padding: 12,
 };
 
-const cardWide: React.CSSProperties = {
-  ...card,
-  padding: "14px 16px",
-};
-
-const rowSpace: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-};
-
 const grid2: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr 1fr 1fr",
@@ -204,7 +231,6 @@ const grid2: React.CSSProperties = {
 };
 
 const field: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 6 };
-
 const label: React.CSSProperties = { fontSize: 12, color: "#93b1ff" };
 
 const input: React.CSSProperties = {
