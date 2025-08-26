@@ -2,363 +2,326 @@
 
 import React, { useMemo, useState } from "react";
 
-type Side = "LONG" | "SHORT" | null;
+/** Tipos básicos */
+type Side = "BUY" | "SELL";
 
 type Fill = {
-  time: string;
-  side: "BUY" | "SELL";
+  time: number;      // timestamp (ms)
+  side: Side;
   qty: number;
   price: number;
-  pnl?: number; // preenchido no fechamento
+  pnl: number;       // PnL realizado deste fill
 };
 
-const START_EQUITY = 10000;
+type Position =
+  | {
+      side: Side;
+      qty: number;        // quantidade aberta
+      avgPrice: number;   // preço médio
+    }
+  | null;
 
+/** Componente */
 export default function TradePanel() {
-  const [equity, setEquity] = useState<number>(START_EQUITY);
+  // Configuração simples
+  const START_EQUITY = 10000;
 
-  const [side, setSide] = useState<Side>(null);
-  const [avgPrice, setAvgPrice] = useState<number>(0);
-  const [qty, setQty] = useState<number>(0);
-  const [price, setPrice] = useState<number>(0); // preço “atual” digitado
+  // Estados principais
+  const [equity, setEquity] = useState<number>(START_EQUITY);
+  const [position, setPosition] = useState<Position>(null);
+  const [qty, setQty] = useState<number>(0.1);
+  const [price, setPrice] = useState<number>(0); // usuário informa o preço atual manualmente
   const [fills, setFills] = useState<Fill[]>([]);
 
-  // PnL não-realizado
-  const unrealizedPnL = useMemo(() => {
-    if (!side || qty === 0 || price <= 0) return 0;
+  // Helper seguro: registra um fill e injeta o time
+  const addFill = (p: Omit<Fill, "time">) => {
+    setFills((prev) => [{ time: Date.now(), ...p }, ...prev]);
+  };
 
-    if (side === "LONG") {
-      return (price - avgPrice) * qty;
-    } else {
-      return (avgPrice - price) * qty;
+  // PnL não realizado (mark-to-market)
+  const unrealizedPnl = useMemo(() => {
+    if (!position || price <= 0) return 0;
+    const dir = position.side === "BUY" ? 1 : -1;
+    return (price - position.avgPrice) * position.qty * dir;
+  }, [position, price]);
+
+  // Valor da conta (equity + PnL não realizado)
+  const accountValue = useMemo(() => equity + unrealizedPnl, [equity, unrealizedPnl]);
+
+  /** Abrir/Aumentar/Reduzir posição */
+  const execute = (side: Side) => {
+    if (price <= 0 || qty <= 0) return;
+
+    // Se não existe posição, abrimos uma
+    if (!position) {
+      setPosition({ side, qty, avgPrice: price });
+      addFill({ side, qty, price, pnl: 0 });
+      return;
     }
-  }, [side, qty, price, avgPrice]);
 
-  function addFill(fill: Fill) {
-    setFills((prev) => [{ ...fill, time: new Date().toLocaleString() }, ...prev]);
-  }
-
-  function onBuy() {
-    if (price <= 0) return alert("Informe um preço válido.");
-    const buyQty = Number(prompt("Quantidade a comprar:", "0.1")) || 0;
-    if (buyQty <= 0) return;
-
-    if (side === "SHORT") {
-      // reduz/fecha short
-      const closeQty = Math.min(qty, buyQty);
-      const realized = (avgPrice - price) * closeQty; // lucro de short
-      setEquity((e) => e + realized);
-      addFill({ side: "BUY", qty: closeQty, price, pnl: realized });
-
-      const remaining = qty - closeQty;
-      if (remaining === 0) {
-        setSide(null);
-        setAvgPrice(0);
-        setQty(0);
-      } else {
-        setQty(remaining);
-      }
-
-      // se comprou mais do que precisava pra zerar, abre LONG no excedente
-      const leftover = buyQty - closeQty;
-      if (leftover > 0) {
-        // nova posição LONG a partir do excedente
-        setSide("LONG");
-        setAvgPrice(price);
-        setQty(leftover);
-        addFill({ side: "BUY", qty: leftover, price });
-      }
-    } else if (side === "LONG") {
-      // média de preço da long
-      const newQty = qty + buyQty;
-      const newAvg = (avgPrice * qty + price * buyQty) / newQty;
-      setQty(newQty);
-      setAvgPrice(newAvg);
-      setSide("LONG");
-      addFill({ side: "BUY", qty: buyQty, price });
-    } else {
-      // abrir LONG do zero
-      setSide("LONG");
-      setAvgPrice(price);
-      setQty(buyQty);
-      addFill({ side: "BUY", qty: buyQty, price });
+    // Mesma direção -> aumenta posição e recalcula preço médio
+    if (position.side === side) {
+      const newQty = round(position.qty + qty);
+      const newAvg =
+        (position.avgPrice * position.qty + price * qty) / (position.qty + qty);
+      setPosition({ side, qty: newQty, avgPrice: newAvg });
+      addFill({ side, qty, price, pnl: 0 });
+      return;
     }
-  }
 
-  function onSell() {
-    if (price <= 0) return alert("Informe um preço válido.");
-    const sellQty = Number(prompt("Quantidade a vender:", "0.1")) || 0;
-    if (sellQty <= 0) return;
+    // Direção oposta -> reduz/fecha posição existente
+    // Quantidade que será fechada nesta execução
+    const closeQty = Math.min(position.qty, qty);
 
-    if (side === "LONG") {
-      // reduz/fecha long
-      const closeQty = Math.min(qty, sellQty);
-      const realized = (price - avgPrice) * closeQty; // lucro de long
-      setEquity((e) => e + realized);
-      addFill({ side: "SELL", qty: closeQty, price, pnl: realized });
-
-      const remaining = qty - closeQty;
-      if (remaining === 0) {
-        setSide(null);
-        setAvgPrice(0);
-        setQty(0);
-      } else {
-        setQty(remaining);
-      }
-
-      // se vendeu mais do que precisava pra zerar, abre SHORT no excedente
-      const leftover = sellQty - closeQty;
-      if (leftover > 0) {
-        setSide("SHORT");
-        setAvgPrice(price);
-        setQty(leftover);
-        addFill({ side: "SELL", qty: leftover, price });
-      }
-    } else if (side === "SHORT") {
-      // média de preço da short
-      const newQty = qty + sellQty;
-      const newAvg = (avgPrice * qty + price * sellQty) / newQty;
-      setQty(newQty);
-      setAvgPrice(newAvg);
-      setSide("SHORT");
-      addFill({ side: "SELL", qty: sellQty, price });
-    } else {
-      // abrir SHORT do zero
-      setSide("SHORT");
-      setAvgPrice(price);
-      setQty(sellQty);
-      addFill({ side: "SELL", qty: sellQty, price });
-    }
-  }
-
-  function onClosePosition() {
-    if (!side || qty === 0) return;
-    if (price <= 0) return alert("Informe um preço válido.");
-
-    let realized = 0;
-    if (side === "LONG") realized = (price - avgPrice) * qty;
-    if (side === "SHORT") realized = (avgPrice - price) * qty;
+    // PnL realizado desta redução
+    const dir = position.side === "BUY" ? 1 : -1; // BUY ganha quando preço sobe
+    const realized = (price - position.avgPrice) * closeQty * dir;
 
     setEquity((e) => e + realized);
-    addFill({
-      side: side === "LONG" ? "SELL" : "BUY",
-      qty,
-      price,
-      pnl: realized,
-    });
+    addFill({ side, qty: closeQty, price, pnl: realized });
 
-    setSide(null);
-    setAvgPrice(0);
-    setQty(0);
-  }
+    // Atualiza posição remanescente
+    const remaining = round(position.qty - closeQty);
 
-  function onReset() {
-    if (!confirm("Resetar tudo?")) return;
+    if (remaining === 0) {
+      // posição fechada
+      if (qty > closeQty) {
+        // sobrou lote para abrir na direção oposta
+        const openQty = round(qty - closeQty);
+        setPosition({ side, qty: openQty, avgPrice: price });
+      } else {
+        setPosition(null);
+      }
+    } else {
+      // reduzimos apenas
+      setPosition({ side: position.side, qty: remaining, avgPrice: position.avgPrice });
+    }
+  };
+
+  /** Fecha 100% da posição ao preço informado */
+  const closePosition = () => {
+    if (!position || price <= 0) return;
+    const sideToClose: Side = position.side === "BUY" ? "SELL" : "BUY";
+    const dir = position.side === "BUY" ? 1 : -1;
+    const realized = (price - position.avgPrice) * position.qty * dir;
+    setEquity((e) => e + realized);
+    addFill({ side: sideToClose, qty: position.qty, price, pnl: realized });
+    setPosition(null);
+  };
+
+  /** Reset total */
+  const resetAll = () => {
     setEquity(START_EQUITY);
-    setSide(null);
-    setAvgPrice(0);
-    setQty(0);
+    setPosition(null);
+    setQty(0.1);
     setPrice(0);
     setFills([]);
-  }
+  };
+
+  /** Helpers de UI */
+  const setPresetQty = (val: number) => setQty(val);
+  const round = (n: number) => Math.round(n * 1000000) / 1000000;
 
   return (
-    <div
-      style={{
-        background: "#151a21",
-        color: "#e8eef6",
-        border: "1px solid #222b36",
-        padding: 16,
-        borderRadius: 12,
-        maxWidth: 900,
-        margin: "24px auto",
-      }}
-    >
-      <h2 style={{ marginTop: 0 }}>Painel de Trade (demo)</h2>
-
-      {/* Linha de status */}
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-        <Stat label="Equity" value={`$ ${equity.toFixed(2)}`} />
-        <Stat label="Posição" value={side ?? "—"} />
-        <Stat label="Qtd" value={qty.toFixed(4)} />
-        <Stat label="Preço médio" value={avgPrice ? avgPrice.toFixed(2) : "—"} />
-        <Stat
-          label="PnL não-realizado"
-          value={(unrealizedPnL >= 0 ? "+ " : "− ") + Math.abs(unrealizedPnL).toFixed(2)}
-        />
+    <div style={styles.wrapper}>
+      {/* Cabeçalho */}
+      <div style={styles.headerRow}>
+        <h2 style={{ margin: 0 }}>Painel de Trade (simulador)</h2>
+        <button style={styles.resetBtn} onClick={resetAll} title="Resetar tudo">
+          Resetar
+        </button>
       </div>
 
-      {/* Controles */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 16,
-          marginTop: 16,
-        }}
-      >
-        <div
-          style={{
-            border: "1px solid #222b36",
-            borderRadius: 10,
-            padding: 12,
-          }}
-        >
-          <label style={{ display: "block", marginBottom: 8 }}>Preço atual</label>
+      {/* Linha 1: Equity e posição */}
+      <div style={styles.row}>
+        <InfoCard label="Equity (USD)" value={equity} />
+        <InfoCard label="Valor da Conta" value={accountValue} />
+        <InfoCard
+          label="Posição"
+          value={
+            position
+              ? `${position.side} ${position.qty} @ ${position.avgPrice}`
+              : "—"
+          }
+        />
+        <InfoCard label="PnL não realizado" value={unrealizedPnl} colored />
+      </div>
+
+      {/* Linha 2: Preço e Quantidade */}
+      <div style={styles.row}>
+        <div style={styles.card}>
+          <div style={styles.cardTitle}>Preço atual</div>
           <input
             type="number"
+            inputMode="decimal"
             step="0.01"
             value={price || ""}
             onChange={(e) => setPrice(Number(e.target.value))}
-            placeholder="Ex: 117000.00"
-            style={{
-              width: "100%",
-              background: "#0f1216",
-              color: "#e8eef6",
-              border: "1px solid #293241",
-              borderRadius: 8,
-              padding: "10px 12px",
-            }}
+            placeholder="ex: 116000.00"
+            style={styles.input}
           />
-          <p style={{ opacity: 0.7, fontSize: 12, marginTop: 8 }}>
-            Dica: pegue o preço pelo crosshair do TradingView e digite aqui.
-          </p>
+          <div style={{ fontSize: 12, opacity: 0.7 }}>
+            (Informe o preço do TradingView manualmente)
+          </div>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
-            gap: 8,
-            alignContent: "start",
-          }}
-        >
-          <button className="btn-green" onClick={onBuy}>
-            Comprar (LONG)
-          </button>
-          <button className="btn-red" onClick={onSell}>
-            Vender (SHORT)
-          </button>
-          <button className="btn-gray" onClick={onClosePosition}>
-            Fechar posição
-          </button>
-          <button className="btn-gray" onClick={onReset}>
-            Resetar
-          </button>
+        <div style={styles.card}>
+          <div style={styles.cardTitle}>Quantidade</div>
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.1"
+            value={qty}
+            onChange={(e) => setQty(Math.max(0, Number(e.target.value)))}
+            style={styles.input}
+          />
+          <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+            {[0.1, 0.5, 1, 5].map((v) => (
+              <button key={v} style={styles.qtyBtn} onClick={() => setPresetQty(v)}>
+                {v}
+              </button>
+            ))}
+          </div>
         </div>
+      </div>
+
+      {/* Linha 3: Botões de ação */}
+      <div style={styles.row}>
+        <button style={{ ...styles.actionBtn, background: "#16a34a" }} onClick={() => execute("BUY")}>
+          Comprar
+        </button>
+        <button style={{ ...styles.actionBtn, background: "#dc2626" }} onClick={() => execute("SELL")}>
+          Vender
+        </button>
+        <button style={{ ...styles.actionBtn, background: "#6b7280" }} onClick={closePosition}>
+          Fechar posição
+        </button>
       </div>
 
       {/* Histórico */}
-      <div style={{ marginTop: 20 }}>
-        <h3 style={{ marginBottom: 8 }}>Histórico</h3>
+      <div style={styles.card}>
+        <div style={styles.cardTitle}>Histórico</div>
         {fills.length === 0 ? (
           <div style={{ opacity: 0.7 }}>Sem operações ainda.</div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                minWidth: 520,
-                border: "1px solid #222b36",
-              }}
-            >
-              <thead>
-                <tr>
-                  <Th>Data/Hora</Th>
-                  <Th>Side</Th>
-                  <Th>Qtd</Th>
-                  <Th>Preço</Th>
-                  <Th>Realizado</Th>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th>Hora</th>
+                <th>Lado</th>
+                <th>Qtd</th>
+                <th>Preço</th>
+                <th>PnL</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fills.map((f, i) => (
+                <tr key={i}>
+                  <td>{new Date(f.time).toLocaleTimeString()}</td>
+                  <td>{f.side}</td>
+                  <td>{f.qty}</td>
+                  <td>{f.price}</td>
+                  <td style={{ color: f.pnl > 0 ? "#16a34a" : f.pnl < 0 ? "#dc2626" : undefined }}>
+                    {f.pnl.toFixed(2)}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {fills.map((f, i) => (
-                  <tr key={i}>
-                    <Td>{f.time}</Td>
-                    <Td>{f.side}</Td>
-                    <Td>{f.qty}</Td>
-                    <Td>{f.price.toFixed(2)}</Td>
-                    <Td style={{ color: f.pnl ? (f.pnl >= 0 ? "#16a34a" : "#ef4444") : "#e8eef6" }}>
-                      {f.pnl !== undefined ? f.pnl.toFixed(2) : "—"}
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
-
-      <style jsx>{`
-        .btn-green,
-        .btn-red,
-        .btn-gray {
-          padding: 12px 10px;
-          border: 0;
-          border-radius: 10px;
-          cursor: pointer;
-          color: white;
-          font-weight: 600;
-          background: #334155;
-        }
-        .btn-green {
-          background: #16a34a;
-        }
-        .btn-red {
-          background: #ef4444;
-        }
-        .btn-gray {
-          background: #334155;
-        }
-        .btn-green:hover {
-          filter: brightness(1.05);
-        }
-        .btn-red:hover {
-          filter: brightness(1.05);
-        }
-        .btn-gray:hover {
-          filter: brightness(1.1);
-        }
-      `}</style>
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+/** Subcomponente de informação rápida */
+function InfoCard(props: { label: string; value: number | string; colored?: boolean }) {
+  const { label, value, colored } = props;
+  const isNum = typeof value === "number";
+  const color =
+    colored && isNum ? (value > 0 ? "#16a34a" : value < 0 ? "#dc2626" : "#e5e7eb") : "#e5e7eb";
+
   return (
-    <div
-      style={{
-        background: "#0f1216",
-        border: "1px solid #222b36",
-        borderRadius: 10,
-        padding: "10px 12px",
-        minWidth: 150,
-      }}
-    >
-      <div style={{ opacity: 0.7, fontSize: 12 }}>{label}</div>
-      <div style={{ fontSize: 18, marginTop: 2 }}>{value}</div>
+    <div style={styles.card}>
+      <div style={styles.cardTitle}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color }}>{isNum ? value.toFixed(2) : value}</div>
     </div>
   );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
-  return (
-    <th
-      style={{
-        textAlign: "left",
-        padding: "10px 12px",
-        borderBottom: "1px solid #222b36",
-        background: "#0f1216",
-      }}
-    >
-      {children}
-    </th>
-  );
-}
-
-function Td({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <td style={{ padding: "10px 12px", borderBottom: "1px solid #222b36", ...style }}>{children}</td>
-  );
-}
+/** Estilos inline simples (sem Tailwind para evitar dependências) */
+const styles: Record<string, React.CSSProperties> = {
+  wrapper: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 16,
+    padding: 16,
+    background: "#0f1216",
+    color: "#e8eef6",
+    borderRadius: 12,
+  },
+  headerRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  row: {
+    display: "flex",
+    gap: 16,
+    flexWrap: "wrap",
+  },
+  card: {
+    background: "#151a21",
+    border: "1px solid #1f2937",
+    borderRadius: 12,
+    padding: 12,
+    minWidth: 260,
+    flex: "1 1 260px",
+  },
+  cardTitle: {
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    opacity: 0.8,
+    marginBottom: 8,
+  },
+  input: {
+    width: "100%",
+    background: "#0b0f14",
+    border: "1px solid #334155",
+    color: "#e8eef6",
+    borderRadius: 8,
+    padding: "8px 10px",
+    outline: "none",
+  },
+  qtyBtn: {
+    background: "#0b0f14",
+    border: "1px solid #334155",
+    color: "#e8eef6",
+    borderRadius: 8,
+    padding: "6px 10px",
+    cursor: "pointer",
+  },
+  actionBtn: {
+    flex: "1 1 180px",
+    minWidth: 180,
+    border: "none",
+    color: "white",
+    fontWeight: 700 as const,
+    borderRadius: 10,
+    padding: "12px 16px",
+    cursor: "pointer",
+  },
+  resetBtn: {
+    background: "#111827",
+    border: "1px solid #374151",
+    color: "#e8eef6",
+    borderRadius: 8,
+    padding: "8px 12px",
+    cursor: "pointer",
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+  },
+};
