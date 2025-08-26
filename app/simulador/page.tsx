@@ -32,54 +32,90 @@ export default function SimuladorPage() {
 
   return (
     <main style={container(panelLeft)}>
-      <div style={controlsBar}>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Select
-            label="Exchange"
-            value={exchange}
-            onChange={(v) => {
-              const ex = v as Exchange;
-              setExchange(ex);
-              setPair(PAIRS[ex][0]);
-            }}
-            options={EXCHANGES.map((ex) => ({ label: ex, value: ex }))}
-          />
-          <Select
-            label="Par"
-            value={pair}
-            onChange={setPair}
-            options={pairsForExchange.map((p) => ({ label: p, value: p }))}
-          />
-          <Select
-            label="Tempo"
-            value={interval}
-            onChange={setInterval}
-            options={INTERVALS.map((i) => ({ label: i.label, value: i.v }))}
-          />
-        </div>
-
-        <button style={btnPrimary} onClick={() => setPanelLeft((v) => !v)}>
-          {panelLeft ? "Painel → direita" : "Painel ← esquerda"}
-        </button>
-      </div>
-
       {panelLeft ? (
         <>
           <aside style={aside}>
             <h2 style={panelTitle}>Painel de Trade</h2>
             <TradePanel />
           </aside>
+
           <section style={chartBox}>
-            <HeaderSymbol text={`TradingView • ${fullSymbol} • ${labelFromInterval(interval)}`} />
-            <TVChart symbol={fullSymbol} interval={interval} />
+            {/* wrapper relativo para sobrepor os controles sem roubar altura */}
+            <div style={chartWrap}>
+              <TVChart symbol={fullSymbol} interval={interval} />
+
+              <div style={overlayControls}>
+                <div style={controlsRow}>
+                  <Select
+                    label="Exchange"
+                    value={exchange}
+                    onChange={(v) => {
+                      const ex = v as Exchange;
+                      setExchange(ex);
+                      setPair(PAIRS[ex][0]);
+                    }}
+                    options={EXCHANGES.map((ex) => ({ label: ex, value: ex }))}
+                  />
+                  <Select
+                    label="Par"
+                    value={pair}
+                    onChange={setPair}
+                    options={pairsForExchange.map((p) => ({ label: p, value: p }))}
+                  />
+                  <Select
+                    label="Tempo"
+                    value={interval}
+                    onChange={setInterval}
+                    options={INTERVALS.map((i) => ({ label: i.label, value: i.v }))}
+                  />
+                </div>
+
+                <button style={btnPrimary} onClick={() => setPanelLeft((v) => !v)}>
+                  {panelLeft ? "Painel → direita" : "Painel ← esquerda"}
+                </button>
+              </div>
+            </div>
           </section>
         </>
       ) : (
         <>
           <section style={chartBox}>
-            <HeaderSymbol text={`TradingView • ${fullSymbol} • ${labelFromInterval(interval)}`} />
-            <TVChart symbol={fullSymbol} interval={interval} />
+            <div style={chartWrap}>
+              <TVChart symbol={fullSymbol} interval={interval} />
+
+              <div style={overlayControls}>
+                <div style={controlsRow}>
+                  <Select
+                    label="Exchange"
+                    value={exchange}
+                    onChange={(v) => {
+                      const ex = v as Exchange;
+                      setExchange(ex);
+                      setPair(PAIRS[ex][0]);
+                    }}
+                    options={EXCHANGES.map((ex) => ({ label: ex, value: ex }))}
+                  />
+                  <Select
+                    label="Par"
+                    value={pair}
+                    onChange={setPair}
+                    options={pairsForExchange.map((p) => ({ label: p, value: p }))}
+                  />
+                  <Select
+                    label="Tempo"
+                    value={interval}
+                    onChange={setInterval}
+                    options={INTERVALS.map((i) => ({ label: i.label, value: i.v }))}
+                  />
+                </div>
+
+                <button style={btnPrimary} onClick={() => setPanelLeft((v) => !v)}>
+                  {panelLeft ? "Painel → direita" : "Painel ← esquerda"}
+                </button>
+              </div>
+            </div>
           </section>
+
           <aside style={aside}>
             <h2 style={panelTitle}>Painel de Trade</h2>
             <TradePanel />
@@ -89,6 +125,8 @@ export default function SimuladorPage() {
     </main>
   );
 }
+
+/* ---------- componentes auxiliares ---------- */
 
 function Select({
   label,
@@ -119,69 +157,18 @@ function Select({
   );
 }
 
-function HeaderSymbol({ text }: { text: string }) {
-  return (
-    <div style={symbolHeader}>
-      <span>{text}</span>
-    </div>
-  );
-}
-
-/* ===== estilos ===== */
+/* ---------- estilos ---------- */
 
 const container = (panelLeft: boolean): React.CSSProperties => ({
   height: "100vh",
   display: "grid",
-  gridTemplateRows: "auto 1fr",
-  gridTemplateColumns: panelLeft ? "560px 1fr" : "1fr 560px", // << PAINEL MAIOR
+  gridTemplateRows: "1fr",                 // sem linha extra (ganha altura)
+  gridTemplateColumns: panelLeft ? "560px 1fr" : "1fr 560px",
   gap: 12,
   padding: 12,
   boxSizing: "border-box",
   background: "#0b0f14",
 });
-
-const controlsBar: React.CSSProperties = {
-  gridColumn: "1 / -1",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 12,
-  background: "#0f1216",
-  border: "1px solid #29313a",
-  borderRadius: 12,
-  padding: "12px 14px",
-  boxShadow: "0 0 0 1px rgba(31,111,235,.15), 0 8px 20px rgba(0,0,0,.35)",
-};
-
-const selectLabel: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  fontSize: 12,
-  color: "#a8c1ff",
-  gap: 6,
-};
-
-const selectInput: React.CSSProperties = {
-  background: "linear-gradient(180deg,#121822 0%,#0f141c 100%)",
-  border: "1px solid #31518d",
-  color: "#e8eef6",
-  borderRadius: 10,
-  padding: "10px 12px",
-  minWidth: 140,
-  outline: "none",
-  boxShadow: "inset 0 0 0 1px rgba(49,81,141,.25)",
-};
-
-const btnPrimary: React.CSSProperties = {
-  background: "linear-gradient(180deg,#3697ff 0%, #1f6feb 100%)",
-  border: "1px solid #1f6feb",
-  color: "#fff",
-  borderRadius: 12,
-  padding: "10px 16px",
-  cursor: "pointer",
-  fontWeight: 600,
-  boxShadow: "0 6px 16px rgba(31,111,235,.35)",
-};
 
 const aside: React.CSSProperties = {
   height: "100%",
@@ -206,19 +193,60 @@ const chartBox: React.CSSProperties = {
   border: "1px solid #29313a",
   borderRadius: 12,
   overflow: "hidden",
+};
+
+const chartWrap: React.CSSProperties = {
+  position: "relative",
+  width: "100%",
+  height: "100%",
+};
+
+const overlayControls: React.CSSProperties = {
+  position: "absolute",
+  top: 10,
+  right: 10,
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  background: "rgba(9,13,20,.65)",
+  backdropFilter: "blur(4px)",
+  border: "1px solid #2a3852",
+  borderRadius: 12,
+  padding: "8px 10px",
+};
+
+const controlsRow: React.CSSProperties = {
+  display: "flex",
+  gap: 10,
+  flexWrap: "wrap",
+};
+
+const selectLabel: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-};
-
-const symbolHeader: React.CSSProperties = {
-  padding: "8px 12px",
-  background: "linear-gradient(180deg,#111826 0%, #0b121d 100%)",
-  borderBottom: "1px solid #29313a",
-  color: "#9fdcff",
   fontSize: 12,
+  color: "#a8c1ff",
+  gap: 6,
 };
 
-function labelFromInterval(v: string) {
-  const map: Record<string, string> = { "1": "1m", "5": "5m", "15": "15m", "60": "1h", "240": "4h", D: "1D" };
-  return map[v] ?? v;
-}
+const selectInput: React.CSSProperties = {
+  background: "linear-gradient(180deg,#121822 0%,#0f141c 100%)",
+  border: "1px solid #31518d",
+  color: "#e8eef6",
+  borderRadius: 10,
+  padding: "8px 10px",
+  minWidth: 120,
+  outline: "none",
+  boxShadow: "inset 0 0 0 1px rgba(49,81,141,.25)",
+};
+
+const btnPrimary: React.CSSProperties = {
+  background: "linear-gradient(180deg,#3697ff 0%, #1f6feb 100%)",
+  border: "1px solid #1f6feb",
+  color: "#fff",
+  borderRadius: 10,
+  padding: "8px 12px",
+  cursor: "pointer",
+  fontWeight: 600,
+  boxShadow: "0 6px 16px rgba(31,111,235,.35)",
+};
