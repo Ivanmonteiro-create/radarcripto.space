@@ -1,327 +1,331 @@
-"use client";
+'use client';
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from 'react';
 
-/** Tipos básicos */
-type Side = "BUY" | "SELL";
+type Side = 'LONG' | 'SHORT' | null;
 
-type Fill = {
-  time: number;      // timestamp (ms)
-  side: Side;
-  qty: number;
-  price: number;
-  pnl: number;       // PnL realizado deste fill
+type Ticker = 'BTCUSDT';
+
+const format = (n: number) =>
+  new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 2,
+  }).format(n);
+
+export default function TradePanel() {
+  // ---- estado do mercado / símbolo ----
+  const [symbol, setSymbol] = useState<Ticker>('BTCUSDT');
+  const [price, setPrice] = useState<number>(0);
+  const [loadingPx, setLoadingPx] = useState(false);
+
+  // ---- inputs de ordem ----
+  const [qtyInput, setQtyInput] = useState<string>('0.01'); // 0.01 BTC
+  const qty = useMemo(() => Math.max(0, Number(qtyInput) || 0), [qtyInput]);
+
+  // ---- posição ----
+  const [side, setSide] = useState<Side>(null);
+  const [positionQty, setPositionQty] = useState(0);   // em BTC
+  const [avgPrice, setAvgPrice] = useState(0);         // USD
+  const [realizedPnl, setRealizedPnl] = useState(0);   // USD
+
+  // PnL não realizado (mark to market)
+  const unrealizedPnl = useMemo(() => {
+    if (!side || positionQty <= 0) return 0;
+    if (side === 'LONG') return (price - avgPrice) * positionQty;
+    return (avgPrice - price) * positionQty;
+  }, [side, positionQty, avgPrice, price]);
+
+  const leverage = 1; // simples (poderemos adicionar depois)
+
+  // --------- feed de preço (Binance público) ----------
+  useEffect(() => {
+    let timer: number | undefined;
+
+    async function fetchPx() {
+      try {
+        setLoadingPx(true);
+        // BTCUSDT → preço em USDT ~= USD
+        const r = await fetch(
+          `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`,
+          { cache: 'no-store' }
+        );
+        const j = await r.json();
+        const p = Number(j.price);
+        if (!Number.isNaN(p)) setPrice(p);
+      } catch {
+        // silencia; mantém último preço
+      } finally {
+        setLoadingPx(false);
+      }
+    }
+
+    fetchPx();
+    timer = window.setInterval(fetchPx, 10_000); // atualiza a cada 10s
+    return () => {
+      if (timer) window.clearInterval(timer);
+    };
+  }, [symbol]);
+
+  // --------- engine de execução / netting ----------
+  function marketBuy() {
+    if (qty <= 0 || price <= 0) return;
+
+    // se posição atual é SHORT, fecha até onde der
+    if (side === 'SHORT' && positionQty > 0) {
+      const closeQty = Math.min(positionQty, qty);
+      // PnL do fechamento de short: (avg - exec) * closeQty
+      const pnl = (avgPrice - price) * closeQty;
+      setRealizedPnl((p) => p + pnl);
+      const rem = positionQty - closeQty;
+
+      if (rem === 0) {
+        // zerou short
+        if (qty > closeQty) {
+          // abre LONG com o resto
+          const openQty = qty - closeQty;
+          setSide('LONG');
+          setPositionQty(openQty);
+          setAvgPrice(price);
+        } else {
+          setSide(null);
+          setPositionQty(0);
+          setAvgPrice(0);
+        }
+      } else {
+        // ainda resta short
+        setPositionQty(rem);
+        // avgPrice permanece
+      }
+      return;
+    }
+
+    // se não tinha posição ou já era LONG → média de preço
+    if (side !== 'LONG') {
+      setSide('LONG');
+      setAvgPrice(price);
+      setPositionQty(qty);
+    } else {
+      const newQty = positionQty + qty;
+      const newAvg = (avgPrice * positionQty + price * qty) / newQty;
+      setPositionQty(newQty);
+      setAvgPrice(newAvg);
+    }
+  }
+
+  function marketSell() {
+    if (qty <= 0 || price <= 0) return;
+
+    // se posição atual é LONG, fecha até onde der
+    if (side === 'LONG' && positionQty > 0) {
+      const closeQty = Math.min(positionQty, qty);
+      // PnL de fechamento de long: (exec - avg) * closeQty
+      const pnl = (price - avgPrice) * closeQty;
+      setRealizedPnl((p) => p + pnl);
+      const rem = positionQty - closeQty;
+
+      if (rem === 0) {
+        // zerou long
+        if (qty > closeQty) {
+          // abre SHORT com o resto
+          const openQty = qty - closeQty;
+          setSide('SHORT');
+          setPositionQty(openQty);
+          setAvgPrice(price);
+        } else {
+          setSide(null);
+          setPositionQty(0);
+          setAvgPrice(0);
+        }
+      } else {
+        // ainda resta long
+        setPositionQty(rem);
+        // avgPrice permanece
+      }
+      return;
+    }
+
+    // se não tinha posição ou já era SHORT → média de preço
+    if (side !== 'SHORT') {
+      setSide('SHORT');
+      setAvgPrice(price);
+      setPositionQty(qty);
+    } else {
+      const newQty = positionQty + qty;
+      const newAvg = (avgPrice * positionQty + price * qty) / newQty;
+      setPositionQty(newQty);
+      setAvgPrice(newAvg);
+    }
+  }
+
+  function closePercent(pct: number) {
+    if (!side || positionQty <= 0) return;
+    const closeQty = Math.max(0, Math.min(positionQty, (positionQty * pct) / 100));
+    if (closeQty === 0) return;
+
+    if (side === 'LONG') {
+      const pnl = (price - avgPrice) * closeQty;
+      setRealizedPnl((p) => p + pnl);
+    } else {
+      const pnl = (avgPrice - price) * closeQty;
+      setRealizedPnl((p) => p + pnl);
+    }
+
+    const rem = positionQty - closeQty;
+    if (rem <= 0.0000001) {
+      setSide(null);
+      setPositionQty(0);
+      setAvgPrice(0);
+    } else {
+      setPositionQty(rem);
+      // avgPrice permanece
+    }
+  }
+
+  function resetAll() {
+    setSide(null);
+    setPositionQty(0);
+    setAvgPrice(0);
+    setRealizedPnl(0);
+  }
+
+  return (
+    <div style={panel}>
+      <div style={row}>
+        <strong>Ativo:</strong>
+        <select
+          value={symbol}
+          onChange={(e) => setSymbol(e.target.value as Ticker)}
+          style={select}
+        >
+          <option value="BTCUSDT">BTCUSDT</option>
+          {/* futuros: ETHUSDT, etc */}
+        </select>
+        <span style={{ marginLeft: 8 }}>
+          {loadingPx ? 'Atualizando…' : `Preço: ${price ? format(price) : '—'}`}
+        </span>
+      </div>
+
+      <div style={row}>
+        <label style={{ marginRight: 8 }}>Qtd (BTC):</label>
+        <input
+          style={input}
+          value={qtyInput}
+          onChange={(e) => setQtyInput(e.target.value)}
+          inputMode="decimal"
+        />
+      </div>
+
+      <div style={row}>
+        <button style={btnBuy} onClick={marketBuy}>Comprar (Market)</button>
+        <button style={btnSell} onClick={marketSell}>Vender (Market)</button>
+      </div>
+
+      <div style={row}>
+        <button style={btn} onClick={() => closePercent(25)}>Fechar 25%</button>
+        <button style={btn} onClick={() => closePercent(50)}>Fechar 50%</button>
+        <button style={btn} onClick={() => closePercent(100)}>Fechar 100%</button>
+      </div>
+
+      <div style={card}>
+        <div style={statRow}>
+          <span>Posição:</span>
+          <strong>
+            {side ?? '—'} {positionQty > 0 ? `· ${positionQty.toFixed(5)} BTC` : ''}
+          </strong>
+        </div>
+        <div style={statRow}>
+          <span>Preço Médio:</span>
+          <strong>{avgPrice ? format(avgPrice) : '—'}</strong>
+        </div>
+        <div style={statRow}>
+          <span>PNL Não Realizado:</span>
+          <strong style={{ color: unrealizedPnl >= 0 ? '#16a34a' : '#dc2626' }}>
+            {format(unrealizedPnl * leverage)}
+          </strong>
+        </div>
+        <div style={statRow}>
+          <span>PNL Realizado:</span>
+          <strong style={{ color: realizedPnl >= 0 ? '#16a34a' : '#dc2626' }}>
+            {format(realizedPnl)}
+          </strong>
+        </div>
+      </div>
+
+      <div style={row}>
+        <button style={btnReset} onClick={resetAll}>Resetar</button>
+      </div>
+    </div>
+  );
+}
+
+// ---- estilos inline simples (evita mexer no seu CSS) ----
+const panel: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12,
+  padding: 16,
+  border: '1px solid #333',
+  borderRadius: 12,
+  background: '#111418',
+  color: '#e5e7eb',
+  minWidth: 320,
 };
 
-type Position =
-  | {
-      side: Side;
-      qty: number;        // quantidade aberta
-      avgPrice: number;   // preço médio
-    }
-  | null;
+const row: React.CSSProperties = {
+  display: 'flex',
+  gap: 8,
+  alignItems: 'center',
+  flexWrap: 'wrap',
+};
 
-/** Componente */
-export default function TradePanel() {
-  // Configuração simples
-  const START_EQUITY = 10000;
+const input: React.CSSProperties = {
+  background: '#0b0f14',
+  color: '#e5e7eb',
+  border: '1px solid #2a2f36',
+  padding: '8px 10px',
+  borderRadius: 10,
+  minWidth: 110,
+};
 
-  // Estados principais
-  const [equity, setEquity] = useState<number>(START_EQUITY);
-  const [position, setPosition] = useState<Position>(null);
-  const [qty, setQty] = useState<number>(0.1);
-  const [price, setPrice] = useState<number>(0); // usuário informa o preço atual manualmente
-  const [fills, setFills] = useState<Fill[]>([]);
+const select: React.CSSProperties = {
+  ...input,
+} as React.CSSProperties;
 
-  // Helper seguro: registra um fill e injeta o time
-  const addFill = (p: Omit<Fill, "time">) => {
-    setFills((prev) => [{ time: Date.now(), ...p }, ...prev]);
-  };
+const btn: React.CSSProperties = {
+  background: '#1f2937',
+  color: '#e5e7eb',
+  border: '1px solid #2a2f36',
+  padding: '8px 12px',
+  borderRadius: 10,
+  cursor: 'pointer',
+};
 
-  // PnL não realizado (mark-to-market)
-  const unrealizedPnl = useMemo(() => {
-    if (!position || price <= 0) return 0;
-    const dir = position.side === "BUY" ? 1 : -1;
-    return (price - position.avgPrice) * position.qty * dir;
-  }, [position, price]);
+const btnBuy: React.CSSProperties = {
+  ...btn,
+  background: '#064e3b',
+  borderColor: '#065f46',
+};
 
-  // Valor da conta (equity + PnL não realizado)
-  const accountValue = useMemo(() => equity + unrealizedPnl, [equity, unrealizedPnl]);
+const btnSell: React.CSSProperties = {
+  ...btn,
+  background: '#7f1d1d',
+  borderColor: '#991b1b',
+};
 
-  /** Abrir/Aumentar/Reduzir posição */
-  const execute = (side: Side) => {
-    if (price <= 0 || qty <= 0) return;
+const btnReset: React.CSSProperties = {
+  ...btn,
+  background: '#374151',
+};
 
-    // Se não existe posição, abrimos uma
-    if (!position) {
-      setPosition({ side, qty, avgPrice: price });
-      addFill({ side, qty, price, pnl: 0 });
-      return;
-    }
+const card: React.CSSProperties = {
+  borderTop: '1px dashed #2a2f36',
+  paddingTop: 10,
+  marginTop: 4,
+};
 
-    // Mesma direção -> aumenta posição e recalcula preço médio
-    if (position.side === side) {
-      const newQty = round(position.qty + qty);
-      const newAvg =
-        (position.avgPrice * position.qty + price * qty) / (position.qty + qty);
-      setPosition({ side, qty: newQty, avgPrice: newAvg });
-      addFill({ side, qty, price, pnl: 0 });
-      return;
-    }
-
-    // Direção oposta -> reduz/fecha posição existente
-    // Quantidade que será fechada nesta execução
-    const closeQty = Math.min(position.qty, qty);
-
-    // PnL realizado desta redução
-    const dir = position.side === "BUY" ? 1 : -1; // BUY ganha quando preço sobe
-    const realized = (price - position.avgPrice) * closeQty * dir;
-
-    setEquity((e) => e + realized);
-    addFill({ side, qty: closeQty, price, pnl: realized });
-
-    // Atualiza posição remanescente
-    const remaining = round(position.qty - closeQty);
-
-    if (remaining === 0) {
-      // posição fechada
-      if (qty > closeQty) {
-        // sobrou lote para abrir na direção oposta
-        const openQty = round(qty - closeQty);
-        setPosition({ side, qty: openQty, avgPrice: price });
-      } else {
-        setPosition(null);
-      }
-    } else {
-      // reduzimos apenas
-      setPosition({ side: position.side, qty: remaining, avgPrice: position.avgPrice });
-    }
-  };
-
-  /** Fecha 100% da posição ao preço informado */
-  const closePosition = () => {
-    if (!position || price <= 0) return;
-    const sideToClose: Side = position.side === "BUY" ? "SELL" : "BUY";
-    const dir = position.side === "BUY" ? 1 : -1;
-    const realized = (price - position.avgPrice) * position.qty * dir;
-    setEquity((e) => e + realized);
-    addFill({ side: sideToClose, qty: position.qty, price, pnl: realized });
-    setPosition(null);
-  };
-
-  /** Reset total */
-  const resetAll = () => {
-    setEquity(START_EQUITY);
-    setPosition(null);
-    setQty(0.1);
-    setPrice(0);
-    setFills([]);
-  };
-
-  /** Helpers de UI */
-  const setPresetQty = (val: number) => setQty(val);
-  const round = (n: number) => Math.round(n * 1000000) / 1000000;
-
-  return (
-    <div style={styles.wrapper}>
-      {/* Cabeçalho */}
-      <div style={styles.headerRow}>
-        <h2 style={{ margin: 0 }}>Painel de Trade (simulador)</h2>
-        <button style={styles.resetBtn} onClick={resetAll} title="Resetar tudo">
-          Resetar
-        </button>
-      </div>
-
-      {/* Linha 1: Equity e posição */}
-      <div style={styles.row}>
-        <InfoCard label="Equity (USD)" value={equity} />
-        <InfoCard label="Valor da Conta" value={accountValue} />
-        <InfoCard
-          label="Posição"
-          value={
-            position
-              ? `${position.side} ${position.qty} @ ${position.avgPrice}`
-              : "—"
-          }
-        />
-        <InfoCard label="PnL não realizado" value={unrealizedPnl} colored />
-      </div>
-
-      {/* Linha 2: Preço e Quantidade */}
-      <div style={styles.row}>
-        <div style={styles.card}>
-          <div style={styles.cardTitle}>Preço atual</div>
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            value={price || ""}
-            onChange={(e) => setPrice(Number(e.target.value))}
-            placeholder="ex: 116000.00"
-            style={styles.input}
-          />
-          <div style={{ fontSize: 12, opacity: 0.7 }}>
-            (Informe o preço do TradingView manualmente)
-          </div>
-        </div>
-
-        <div style={styles.card}>
-          <div style={styles.cardTitle}>Quantidade</div>
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.1"
-            value={qty}
-            onChange={(e) => setQty(Math.max(0, Number(e.target.value)))}
-            style={styles.input}
-          />
-          <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-            {[0.1, 0.5, 1, 5].map((v) => (
-              <button key={v} style={styles.qtyBtn} onClick={() => setPresetQty(v)}>
-                {v}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Linha 3: Botões de ação */}
-      <div style={styles.row}>
-        <button style={{ ...styles.actionBtn, background: "#16a34a" }} onClick={() => execute("BUY")}>
-          Comprar
-        </button>
-        <button style={{ ...styles.actionBtn, background: "#dc2626" }} onClick={() => execute("SELL")}>
-          Vender
-        </button>
-        <button style={{ ...styles.actionBtn, background: "#6b7280" }} onClick={closePosition}>
-          Fechar posição
-        </button>
-      </div>
-
-      {/* Histórico */}
-      <div style={styles.card}>
-        <div style={styles.cardTitle}>Histórico</div>
-        {fills.length === 0 ? (
-          <div style={{ opacity: 0.7 }}>Sem operações ainda.</div>
-        ) : (
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th>Hora</th>
-                <th>Lado</th>
-                <th>Qtd</th>
-                <th>Preço</th>
-                <th>PnL</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fills.map((f, i) => (
-                <tr key={i}>
-                  <td>{new Date(f.time).toLocaleTimeString()}</td>
-                  <td>{f.side}</td>
-                  <td>{f.qty}</td>
-                  <td>{f.price}</td>
-                  <td style={{ color: f.pnl > 0 ? "#16a34a" : f.pnl < 0 ? "#dc2626" : undefined }}>
-                    {f.pnl.toFixed(2)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** Subcomponente de informação rápida */
-function InfoCard(props: { label: string; value: number | string; colored?: boolean }) {
-  const { label, value, colored } = props;
-  const isNum = typeof value === "number";
-  const color =
-    colored && isNum ? (value > 0 ? "#16a34a" : value < 0 ? "#dc2626" : "#e5e7eb") : "#e5e7eb";
-
-  return (
-    <div style={styles.card}>
-      <div style={styles.cardTitle}>{label}</div>
-      <div style={{ fontSize: 18, fontWeight: 700, color }}>{isNum ? value.toFixed(2) : value}</div>
-    </div>
-  );
-}
-
-/** Estilos inline simples (sem Tailwind para evitar dependências) */
-const styles: Record<string, React.CSSProperties> = {
-  wrapper: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 16,
-    padding: 16,
-    background: "#0f1216",
-    color: "#e8eef6",
-    borderRadius: 12,
-  },
-  headerRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  row: {
-    display: "flex",
-    gap: 16,
-    flexWrap: "wrap",
-  },
-  card: {
-    background: "#151a21",
-    border: "1px solid #1f2937",
-    borderRadius: 12,
-    padding: 12,
-    minWidth: 260,
-    flex: "1 1 260px",
-  },
-  cardTitle: {
-    fontSize: 12,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    opacity: 0.8,
-    marginBottom: 8,
-  },
-  input: {
-    width: "100%",
-    background: "#0b0f14",
-    border: "1px solid #334155",
-    color: "#e8eef6",
-    borderRadius: 8,
-    padding: "8px 10px",
-    outline: "none",
-  },
-  qtyBtn: {
-    background: "#0b0f14",
-    border: "1px solid #334155",
-    color: "#e8eef6",
-    borderRadius: 8,
-    padding: "6px 10px",
-    cursor: "pointer",
-  },
-  actionBtn: {
-    flex: "1 1 180px",
-    minWidth: 180,
-    border: "none",
-    color: "white",
-    fontWeight: 700 as const,
-    borderRadius: 10,
-    padding: "12px 16px",
-    cursor: "pointer",
-  },
-  resetBtn: {
-    background: "#111827",
-    border: "1px solid #374151",
-    color: "#e8eef6",
-    borderRadius: 8,
-    padding: "8px 12px",
-    cursor: "pointer",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
+const statRow: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  margin: '6px 0',
 };
