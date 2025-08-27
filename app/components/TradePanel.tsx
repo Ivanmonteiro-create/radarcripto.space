@@ -1,332 +1,281 @@
+// app/components/TradePanel.tsx
 "use client";
 
 import React, { useMemo, useState } from "react";
-import Link from "next/link";
 
-/**
- * Painel de Trade “mock” para simulação local
- * - créditos: saldo virtual inicial
- * - realized: PnL realizado
- * - qty/price: controles básicos
- * - fills: tabela com execuções simuladas
- *
- * OBS: É um simulador local, sem backend.
- */
-
-type FillSide = "BUY" | "SELL";
-
-type Fill = {
-  time: string;     // HH:mm:ss
-  side: FillSide;
-  qty: number;
-  price: number;
-};
+type Side = "BUY" | "SELL";
 
 export default function TradePanel() {
-  // estado base
-  const [credits, setCredits] = useState<number>(100_000);
-  const [realized, setRealized] = useState<number>(0);
-  const [side, setSide] = useState<FillSide>("BUY");
-  const [qty, setQty] = useState<number>(1);
-  const [price, setPrice] = useState<number>(10_000);
-  const [fills, setFills] = useState<Fill[]>([]);
+  // estado da “carteira” do aluno
+  const [credits, setCredits] = useState(100_000);
+  const [realized, setRealized] = useState(0);
 
-  // posição líquida e preço médio
-  const { net, avgPrice, unrealized } = useMemo(() => {
-    let position = 0;
-    let cost = 0;
+  // ordem atual
+  const [side, setSide] = useState<Side>("BUY");
+  const [qty, setQty] = useState(1);
+  const [price, setPrice] = useState(10_000);
 
-    for (const f of fills) {
-      if (f.side === "BUY") {
-        position += f.qty;
-        cost += f.qty * f.price;
-      } else {
-        // venda reduz posição; se estiver positivo, realiza PnL
-        const closing = Math.min(Math.max(position, 0), f.qty);
-        const avg = position > 0 ? cost / Math.max(position, 1) : 0;
-        const realizedNow = closing * (f.price - avg);
-        setTimeout(() => setRealized((r) => r + realizedNow), 0);
+  // posição aberta (simples: 1 posição por vez)
+  const [posQty, setPosQty] = useState(0);
+  const [avgPrice, setAvgPrice] = useState<number | null>(null);
 
-        position -= f.qty;
-        if (position >= 0) {
-          cost -= closing * avg;
-        } else {
-          // virou short: custo passa a ser preço da venda excedente
-          cost = -position * f.price;
-        }
-      }
+  // fills (histórico)
+  const [fills, setFills] = useState<
+    { time: string; side: Side; qty: number; price: number }[]
+  >([]);
+
+  const markPrice = price; // usamos o preço do input como mark para o PnL não realizado
+  const unrealized = useMemo(() => {
+    if (!avgPrice || posQty === 0) return 0;
+    const diff = side === "BUY" ? markPrice - avgPrice : avgPrice - markPrice;
+    // Para PnL da posição, sempre use sinal em função do sentido da posição:
+    const signedDiff = (markPrice - (avgPrice ?? markPrice)) * (posQty >= 0 ? 1 : -1);
+    return Math.round(signedDiff * Math.abs(posQty));
+  }, [avgPrice, markPrice, posQty, side]);
+
+  function addFill(s: Side, q: number, p: number) {
+    const time = new Date().toLocaleTimeString();
+    setFills((f) => [{ time, side: s, qty: q, price: p }, ...f].slice(0, 20));
+  }
+
+  function buy() {
+    // abrir / aumentar posição comprada
+    const cost = qty * price;
+    if (credits < cost) return; // sem saldo
+    setCredits((c) => c - cost);
+
+    // média de preço
+    const newQty = posQty + qty;
+    const newAvg =
+      avgPrice == null ? price : (posQty * (avgPrice as number) + qty * price) / (posQty + qty);
+
+    setPosQty(newQty);
+    setAvgPrice(newAvg);
+    addFill("BUY", qty, price);
+  }
+
+  function sell() {
+    if (posQty <= 0) {
+      // abertura de short simples
+      const proceeds = qty * price;
+      setCredits((c) => c + proceeds);
+      setPosQty((q) => q - qty);
+      setAvgPrice((a) => (a == null ? price : a));
+      addFill("SELL", qty, price);
+      return;
     }
 
-    const avg = position !== 0 ? cost / Math.abs(position) : 0;
-
-    // PnL não realizado sobre “price” atual do input, só pra referência
-    const mark = price;
-    let u = 0;
-    if (position > 0) u = (mark - avg) * position;
-    else if (position < 0) u = (avg - mark) * Math.abs(position);
-
-    return { net: position, avgPrice: avg, unrealized: u };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fills, price]);
-
-  function addFill(s: FillSide) {
-    const f: Fill = {
-      time: new Date().toLocaleTimeString("pt-BR", { hour12: false }),
-      side: s,
-      qty: Math.max(0, Math.floor(qty)),
-      price: Math.max(0, Math.floor(price)),
-    };
-    if (!f.qty || !f.price) return;
-    setFills((arr) => [f, ...arr.slice(0, 99)]);
+    // reduzir/fechar long
+    const closeQty = Math.min(qty, posQty);
+    const realizedPnL = (price - (avgPrice ?? price)) * closeQty;
+    setRealized((r) => r + Math.round(realizedPnL));
+    setCredits((c) => c + closeQty * price);
+    const remaining = posQty - closeQty;
+    setPosQty(remaining);
+    if (remaining === 0) setAvgPrice(null);
+    addFill("SELL", closeQty, price);
   }
 
   function resetAll() {
-    setFills([]);
+    setCredits(100_000);
     setRealized(0);
+    setSide("BUY");
     setQty(1);
     setPrice(10_000);
+    setPosQty(0);
+    setAvgPrice(null);
+    setFills([]);
   }
 
   return (
-    <div style={panelShell}>
-      {/* topo com CTA */}
-      <div style={headerRow}>
-        <h2 style={title}>Painel de Trade</h2>
-        <Link href="/planos">
-          <button style={ctaBtn}>Comprar Plano</button>
-        </Link>
+    <div style={panelStyle}>
+      <div style={panelHeader}>
+        <h2 style={{ margin: 0 }}>Painel de Trade</h2>
+        <button style={buyBtnYellow} onClick={() => alert("Plano: em breve 😉")}>
+          Comprar Plano
+        </button>
       </div>
 
-      {/* saldo e pnl */}
-      <div style={statRow}>
-        <div style={statBox}>
-          <span style={label}>Créditos</span>
-          <strong style={value}>US$ {credits.toLocaleString()}</strong>
+      <div style={kpisRow}>
+        <div style={kpiCard}>
+          <div style={kpiLabel}>Créditos</div>
+          <div style={kpiValue}>US$ {credits.toLocaleString()}</div>
         </div>
-        <div style={statBox}>
-          <span style={label}>Lucro Realizado</span>
-          <strong style={{ ...value, color: realized >= 0 ? "#22c55e" : "#ef4444" }}>
-            US$ {realized.toFixed(2)}
-          </strong>
-        </div>
-      </div>
-
-      {/* controles */}
-      <div style={controlsRow}>
-        <div style={controlCol}>
-          <span style={smallLabel}>Lado</span>
-          <select
-            value={side}
-            onChange={(e) => setSide(e.target.value as FillSide)}
-            style={select}
-          >
-            <option value="BUY">BUY (Long)</option>
-            <option value="SELL">SELL (Short)</option>
-          </select>
-        </div>
-        <div style={controlCol}>
-          <span style={smallLabel}>Qtd</span>
-          <input
-            type="number"
-            value={qty}
-            onChange={(e) => setQty(Number(e.target.value))}
-            style={input}
-          />
-        </div>
-        <div style={controlCol}>
-          <span style={smallLabel}>Preço</span>
-          <input
-            type="number"
-            value={price}
-            onChange={(e) => setPrice(Number(e.target.value))}
-            style={input}
-          />
-        </div>
-        <div style={buttonsCol}>
-          <button onClick={() => addFill("BUY")} style={buyBtn}>Buy</button>
-          <button onClick={() => addFill("SELL")} style={sellBtn}>Sell</button>
-          <button onClick={resetAll} style={resetBtn}>Reset</button>
-        </div>
-      </div>
-
-      {/* posição */}
-      <div style={positionBox}>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <div><b>Posição:</b> {net >= 0 ? "Long" : "Short"} {Math.abs(net)}</div>
-          <div><b>Preço Médio:</b> {avgPrice ? `US$ ${avgPrice.toFixed(2)}` : "—"}</div>
-          <div>
-            <b>PNL não realizado (mark={price.toLocaleString()}):</b>{" "}
-            <span style={{ color: unrealized >= 0 ? "#22c55e" : "#ef4444" }}>
-              US$ {unrealized.toFixed(2)}
-            </span>
+        <div style={kpiCard}>
+          <div style={kpiLabel}>Lucro Realizado</div>
+          <div style={{ ...kpiValue, color: realized >= 0 ? "#22c55e" : "#ef4444" }}>
+            US$ {realized.toLocaleString()}
           </div>
         </div>
       </div>
 
-      {/* fills */}
-      <div style={fillsBox}>
-        <div style={{ marginBottom: 6, fontWeight: 700 }}>Fills</div>
-        <div style={fillsHead}>
-          <span>Hora</span><span>Lado</span><span>Qtd</span><span>Preço</span>
+      <div style={row}>
+        <div style={{ ...field, flex: 1 }}>
+          <label style={label}>Lado</label>
+          <select value={side} onChange={(e) => setSide(e.target.value as Side)} style={input}>
+            <option value="BUY">BUY (Long)</option>
+            <option value="SELL">SELL (Short)</option>
+          </select>
         </div>
-        <div style={{ maxHeight: 180, overflow: "auto" }}>
-          {fills.length === 0 ? (
-            <div style={{ opacity: .7, padding: "8px 0" }}>Nenhum ainda</div>
+        <div style={{ ...field, width: 90 }}>
+          <label style={label}>Qtd</label>
+          <input
+            type="number"
+            min={1}
+            value={qty}
+            onChange={(e) => setQty(Math.max(1, Number(e.target.value || 1)))}
+            style={input}
+          />
+        </div>
+        <div style={{ ...field, width: 120 }}>
+          <label style={label}>Preço</label>
+          <input
+            type="number"
+            value={price}
+            onChange={(e) => setPrice(Number(e.target.value || 0))}
+            style={input}
+          />
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, margin: "6px 0 12px" }}>
+        <button onClick={buy} style={buyBtn}>
+          Buy
+        </button>
+        <button onClick={sell} style={sellBtn}>
+          Sell
+        </button>
+        <button onClick={resetAll} style={resetBtn}>
+          Reset
+        </button>
+      </div>
+
+      <div style={box}>
+        <div style={smallTitle}>Posição</div>
+        <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 8 }}>
+          {posQty === 0 ? (
+            <>— Fechado</>
           ) : (
-            fills.map((f, i) => (
-              <div key={i} style={fillsRow}>
-                <span>{f.time}</span>
-                <span style={{ color: f.side === "BUY" ? "#22c55e" : "#ef4444" }}>{f.side}</span>
-                <span>{f.qty}</span>
-                <span>{f.price.toLocaleString()}</span>
-              </div>
-            ))
+            <>
+              {posQty > 0 ? "Long" : "Short"} • Qtd: {Math.abs(posQty)} • Preço Médio:{" "}
+              {avgPrice?.toLocaleString()}
+            </>
           )}
         </div>
+        <div style={{ fontWeight: 600, color: unrealized >= 0 ? "#22c55e" : "#ef4444" }}>
+          PNL não realizado (mark={price.toLocaleString()}): US$ {unrealized.toLocaleString()}
+        </div>
+      </div>
+
+      <div style={box}>
+        <div style={smallTitle}>Fills</div>
+        {fills.length === 0 ? (
+          <div style={{ opacity: 0.7, fontSize: 12 }}>Nenhum ainda</div>
+        ) : (
+          <table style={{ width: "100%", fontSize: 12 }}>
+            <thead>
+              <tr style={{ opacity: 0.7 }}>
+                <th style={th}>Hora</th>
+                <th style={th}>Lado</th>
+                <th style={th}>Qtd</th>
+                <th style={th}>Preço</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fills.map((f, i) => (
+                <tr key={i}>
+                  <td style={td}>{f.time}</td>
+                  <td style={{ ...td, color: f.side === "BUY" ? "#22c55e" : "#ef4444" }}>{f.side}</td>
+                  <td style={td}>{f.qty}</td>
+                  <td style={td}>{f.price.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
 }
 
-/* ================= styles ================= */
-
-const panelShell: React.CSSProperties = {
-  position: "relative",
-  zIndex: 5,                 // garante ficar acima do iframe
-  background: "#0b1220",
-  border: "1px solid #1f2a44",
-  borderRadius: 12,
-  padding: "12px 12px 16px",
-  color: "#e6eef8",
+/* estilos inline (rápido) */
+const panelStyle: React.CSSProperties = {
   width: 360,
+  minWidth: 320,
+  display: "flex",
+  flexDirection: "column",
+  gap: 12,
+  padding: 12,
+  borderRadius: 12,
+  background: "linear-gradient(180deg,#0f1a2b,#0b1220)",
+  border: "1px solid rgba(255,255,255,0.08)",
 };
-
-const headerRow: React.CSSProperties = {
+const panelHeader: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  gap: 12,
-  marginBottom: 8,
+  gap: 8,
 };
-
-const title: React.CSSProperties = {
-  margin: 0,
-  fontSize: 18,
-  letterSpacing: .4,
-};
-
-const ctaBtn: React.CSSProperties = {
-  background: "#f59e0b",
-  color: "#1b1b1b",
-  border: "none",
-  padding: "10px 14px",
+const kpisRow: React.CSSProperties = { display: "flex", gap: 8 };
+const kpiCard: React.CSSProperties = {
+  flex: 1,
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(255,255,255,0.06)",
   borderRadius: 10,
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const statRow: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 10,
-  marginBottom: 10,
-};
-
-const statBox: React.CSSProperties = {
-  background: "#0e172b",
-  border: "1px solid #1f2a44",
-  borderRadius: 10,
-  padding: 10,
-};
-
-const label: React.CSSProperties = {
-  display: "block",
-  fontSize: 12,
-  opacity: .75,
-  marginBottom: 2,
-};
-
-const value: React.CSSProperties = {
-  fontSize: 16,
-};
-
-const controlsRow: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr 1fr 1fr",
-  gap: 10,
-  marginBottom: 10,
-};
-
-const controlCol: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 6 };
-const smallLabel: React.CSSProperties = { fontSize: 12, opacity: .8 };
-
-const select: React.CSSProperties = {
-  background: "#0e172b",
-  color: "#e6eef8",
-  border: "1px solid #1f2a44",
-  borderRadius: 8,
   padding: "8px 10px",
 };
-
+const kpiLabel: React.CSSProperties = { fontSize: 11, opacity: 0.7, marginBottom: 4 };
+const kpiValue: React.CSSProperties = { fontSize: 16, fontWeight: 700 };
+const row: React.CSSProperties = { display: "flex", gap: 8 };
+const field: React.CSSProperties = { display: "flex", flexDirection: "column" };
+const label: React.CSSProperties = { fontSize: 11, opacity: 0.7, marginBottom: 4 };
 const input: React.CSSProperties = {
-  background: "#0e172b",
-  color: "#e6eef8",
-  border: "1px solid #1f2a44",
+  height: 34,
   borderRadius: 8,
-  padding: "8px 10px",
+  border: "1px solid rgba(255,255,255,0.12)",
+  background: "rgba(0,0,0,0.25)",
+  color: "white",
+  padding: "0 10px",
+  outline: "none",
 };
-
-const buttonsCol: React.CSSProperties = { display: "flex", gap: 8, alignItems: "end" };
-
 const buyBtn: React.CSSProperties = {
-  background: "#22c55e",
-  border: "none",
-  color: "#071017",
-  padding: "8px 10px",
+  padding: "8px 12px",
   borderRadius: 8,
-  cursor: "pointer",
+  border: "1px solid rgba(34,197,94,0.25)",
+  background: "#16a34a",
+  color: "white",
   fontWeight: 700,
 };
 const sellBtn: React.CSSProperties = {
-  ...buyBtn,
+  padding: "8px 12px",
+  borderRadius: 8,
+  border: "1px solid rgba(239,68,68,0.25)",
   background: "#ef4444",
+  color: "white",
+  fontWeight: 700,
 };
 const resetBtn: React.CSSProperties = {
-  ...buyBtn,
-  background: "#475569",
-  color: "#e6eef8",
+  padding: "8px 12px",
+  borderRadius: 8,
+  border: "1px solid rgba(148,163,184,0.25)",
+  background: "rgba(148,163,184,0.2)",
+  color: "white",
+  fontWeight: 700,
 };
-
-const positionBox: React.CSSProperties = {
-  background: "#0e172b",
-  border: "1px solid #1f2a44",
+const buyBtnYellow: React.CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 8,
+  border: "1px solid rgba(234,179,8,0.35)",
+  background: "#f59e0b",
+  color: "#0b1220",
+  fontWeight: 800,
+};
+const box: React.CSSProperties = {
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(255,255,255,0.06)",
   borderRadius: 10,
   padding: 10,
-  marginBottom: 10,
-  fontSize: 14,
 };
-
-const fillsBox: React.CSSProperties = {
-  background: "#0e172b",
-  border: "1px solid #1f2a44",
-  borderRadius: 10,
-  padding: 10,
-};
-
-const fillsHead: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr 1fr 1fr",
-  opacity: .8,
-  fontSize: 12,
-  gap: 8,
-  borderBottom: "1px solid #1f2a44",
-  paddingBottom: 6,
-};
-
-const fillsRow: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr 1fr 1fr",
-  gap: 8,
-  padding: "8px 0",
-  borderBottom: "1px dashed #13223a",
-};
+const smallTitle: React.CSSProperties = { fontSize: 12, fontWeight: 700, marginBottom: 6 };
+const th: React.CSSProperties = { textAlign: "left", padding: "4px 6px", borderBottom: "1px solid rgba(255,255,255,0.06)" };
+const td: React.CSSProperties = { padding: "6px 6px" };
