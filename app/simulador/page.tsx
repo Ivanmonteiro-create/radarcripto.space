@@ -9,15 +9,7 @@ const PAIRS_BY_EXCHANGE: Record<(typeof EXCHANGES)[number], string[]> = {
   BINANCE: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"],
   COINBASE: ["BTCUSD", "ETHUSD", "SOLUSD"],
 };
-const INTERVALS: Array<"1m" | "30m" | "1h" | "4h" | "1D"> = [
-  "1m",
-  "30m",
-  "1h",
-  "4h",
-  "1D",
-];
-
-/* Map para o widget do TradingView */
+const INTERVALS: Array<"1m" | "30m" | "1h" | "4h" | "1D"> = ["1m", "30m", "1h", "4h", "1D"];
 const TV_INTERVAL_MAP: Record<string, "1" | "30" | "60" | "240" | "D"> = {
   "1m": "1",
   "30m": "30",
@@ -26,16 +18,15 @@ const TV_INTERVAL_MAP: Record<string, "1" | "30" | "60" | "240" | "D"> = {
   "1D": "D",
 };
 
-/* ========= Tipos simples ========= */
 type Side = "BUY" | "SELL";
 type Fill = { time: string; side: Side; qty: number; price: number };
 
-/* ========= Estilos reutilizáveis ========= */
+/* ========= Estilos ========= */
 const container: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "360px 1fr",
   gap: "14px",
-  height: "var(--vh, 100vh)", // permite ocupar até o rodapé
+  height: "var(--vh, 100vh)",
   padding: "12px",
   boxSizing: "border-box",
 };
@@ -63,6 +54,7 @@ const btn: React.CSSProperties = {
   borderRadius: 10,
   padding: "8px 10px",
   cursor: "pointer",
+  userSelect: "none",
 };
 
 const btnPrimary: React.CSSProperties = {
@@ -84,17 +76,75 @@ const value: React.CSSProperties = { fontWeight: 700, fontSize: 16 };
 
 /* ========= Página ========= */
 export default function SimuladorPage() {
-  /* --- Topo --- */
+  /* Topo */
   const [exchange, setExchange] = useState<(typeof EXCHANGES)[number]>("BINANCE");
   const [pair, setPair] = useState<string>("BTCUSDT");
   const [interval, setInterval] = useState<(typeof INTERVALS)[number]>("1h");
 
-  /* --- Painel lateral --- */
+  /* Painel lateral */
   const [panelOnRight, setPanelOnRight] = useState(false);
   const [panelHidden, setPanelHidden] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
-  /* --- Trade simples (mock local, mantendo seus botões) --- */
+  /* Fullscreen */
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const pageRef = useRef<HTMLDivElement>(null);
+
+  // helpers fullscreen
+  const isFS = () =>
+    !!(
+      document.fullscreenElement ||
+      // @ts-ignore
+      document.webkitFullscreenElement ||
+      // @ts-ignore
+      document.mozFullScreenElement ||
+      // @ts-ignore
+      document.msFullscreenElement
+    );
+
+  const enterFS = async (el: HTMLElement) => {
+    try {
+      if (el.requestFullscreen) await el.requestFullscreen();
+      // @ts-ignore
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      // @ts-ignore
+      else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+      // @ts-ignore
+      else if (el.msRequestFullscreen) el.msRequestFullscreen();
+      setIsFullscreen(true);
+    } catch {
+      // fallback visual caso o browser bloqueie a Fullscreen API
+      setIsFullscreen((v) => !v);
+    }
+  };
+
+  const exitFS = async () => {
+    try {
+      if (document.exitFullscreen) await document.exitFullscreen();
+      // @ts-ignore
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      // @ts-ignore
+      else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+      // @ts-ignore
+      else if (document.msExitFullscreen) document.msExitFullscreen();
+      setIsFullscreen(false);
+    } catch {
+      setIsFullscreen(false);
+    }
+  };
+
+  React.useEffect(() => {
+    const handler = () => setIsFullscreen(isFS());
+    document.addEventListener("fullscreenchange", handler);
+    // @ts-ignore
+    document.addEventListener("webkitfullscreenchange", handler);
+    return () => {
+      document.removeEventListener("fullscreenchange", handler);
+      // @ts-ignore
+      document.removeEventListener("webkitfullscreenchange", handler);
+    };
+  }, []);
+
+  /* Trade mock (igual) */
   const [credits, setCredits] = useState(100_000);
   const [realized, setRealized] = useState(0);
   const [side, setSide] = useState<Side>("BUY");
@@ -103,14 +153,13 @@ export default function SimuladorPage() {
   const [avgPrice, setAvgPrice] = useState<number | null>(null);
   const [positionQty, setPositionQty] = useState(0);
   const [fills, setFills] = useState<Fill[]>([]);
-  const [activeTab, setActiveTab] = useState<"fills" | "historico" | "notas" | "dicas" | "atalhos">("fills");
+  const [activeTab, setActiveTab] =
+    useState<"fills" | "historico" | "notas" | "dicas" | "atalhos">("fills");
 
-  // markPrice “manual” (mantemos como referência local para PnL não realizado)
   const markPrice = price;
-
   const pnlUnrealized = useMemo(() => {
     if (!avgPrice || positionQty === 0) return 0;
-    const dir = positionQty > 0 ? 1 : -1; // long vs short
+    const dir = positionQty > 0 ? 1 : -1;
     const diff = (markPrice - avgPrice) * dir;
     return diff * Math.abs(positionQty);
   }, [avgPrice, positionQty, markPrice]);
@@ -122,18 +171,15 @@ export default function SimuladorPage() {
     const time = new Date().toLocaleTimeString();
     setFills((f) => [{ time, side: s, qty: q, price: p }, ...f]);
   }
-
   function onBuy() {
-    // abre/aduza long; se estava short, fecha parcial e realiza
     if (positionQty < 0) {
       const closing = Math.min(Math.abs(positionQty), qty);
-      const realizedPart = (avgPrice! - price) * closing; // short: ganha se cai
+      const realizedPart = (avgPrice! - price) * closing;
       setRealized((r) => r + realizedPart);
       setPositionQty(positionQty + closing);
     }
     const rest = qty - Math.max(0, -positionQty);
     if (rest > 0) {
-      // média de preço
       const newQty = positionQty + rest;
       const newAvg =
         avgPrice === null || positionQty <= 0
@@ -144,12 +190,10 @@ export default function SimuladorPage() {
     }
     addFill("BUY", qty, price);
   }
-
   function onSell() {
-    // abre/aduza short; se estava long, fecha parcial e realiza
     if (positionQty > 0) {
       const closing = Math.min(positionQty, qty);
-      const realizedPart = (price - avgPrice!) * closing; // long: ganha se sobe
+      const realizedPart = (price - avgPrice!) * closing;
       setRealized((r) => r + realizedPart);
       setPositionQty(positionQty - closing);
     }
@@ -165,7 +209,6 @@ export default function SimuladorPage() {
     }
     addFill("SELL", qty, price);
   }
-
   function onReset() {
     setCredits(100_000);
     setRealized(0);
@@ -177,18 +220,18 @@ export default function SimuladorPage() {
     setFills([]);
   }
 
-  /* --- Fullscreen via CSS class --- */
-  const pageRef = useRef<HTMLDivElement>(null);
+  /* layout dinâmico */
   const rootStyles: React.CSSProperties = useMemo(() => {
     const grid = panelHidden ? "0px 1fr" : panelOnRight ? "1fr 360px" : "360px 1fr";
     return {
       ...container,
       gridTemplateColumns: grid,
+      transition: "grid-template-columns .25s ease",
       height: "100vh",
     };
   }, [panelOnRight, panelHidden]);
 
-  // garante altura útil no mobile iOS/Android
+  // altura útil mobile
   React.useEffect(() => {
     const setVH = () => {
       const vh = window.innerHeight * 0.01;
@@ -200,8 +243,15 @@ export default function SimuladorPage() {
   }, []);
 
   return (
-    <div ref={pageRef} style={{ height: "100vh", background: "#0a1222" }}>
-      {/* Barra do topo */}
+    <div
+      ref={pageRef}
+      style={{
+        height: "100vh",
+        background: "#0a1222",
+        ...(isFullscreen ? { position: "fixed", inset: 0, zIndex: 9999 } : {}),
+      }}
+    >
+      {/* Barra topo */}
       <div style={{ ...topBar, padding: "10px 12px" }}>
         <div style={{ display: "flex", gap: 8 }}>
           <span style={{ ...label, margin: 0 }}>Exchange</span>
@@ -211,8 +261,7 @@ export default function SimuladorPage() {
             onChange={(e) => {
               const ex = e.target.value as (typeof EXCHANGES)[number];
               setExchange(ex);
-              const firstPair = PAIRS_BY_EXCHANGE[ex][0];
-              setPair(firstPair);
+              setPair(PAIRS_BY_EXCHANGE[ex][0]);
             }}
           >
             {EXCHANGES.map((ex) => (
@@ -223,11 +272,7 @@ export default function SimuladorPage() {
           </select>
 
           <span style={{ ...label, margin: 0 }}>Par</span>
-          <select
-            style={selectStyle}
-            value={pair}
-            onChange={(e) => setPair(e.target.value)}
-          >
+          <select style={selectStyle} value={pair} onChange={(e) => setPair(e.target.value)}>
             {PAIRS_BY_EXCHANGE[exchange].map((p) => (
               <option key={p} value={p}>
                 {p}
@@ -250,11 +295,7 @@ export default function SimuladorPage() {
         </div>
 
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-          <button
-            style={btn}
-            onClick={() => setPanelOnRight((v) => !v)}
-            title="Mover painel"
-          >
+          <button style={btn} onClick={() => setPanelOnRight((v) => !v)} title="Mover painel">
             Painel → {panelOnRight ? "esquerda" : "direita"}
           </button>
           <button
@@ -266,7 +307,11 @@ export default function SimuladorPage() {
           </button>
           <button
             style={btn}
-            onClick={() => setIsFullscreen((v) => !v)}
+            onClick={() => {
+              const el = pageRef.current!;
+              if (!isFS()) enterFS(el);
+              else exitFS();
+            }}
             title="Tela cheia"
           >
             {isFullscreen ? "Sair tela cheia" : "Tela cheia"}
@@ -274,13 +319,8 @@ export default function SimuladorPage() {
         </div>
       </div>
 
-      {/* Grade principal (painel + gráfico) */}
-      <div
-        style={{
-          ...rootStyles,
-          paddingTop: 0,
-        }}
-      >
+      {/* Grid principal */}
+      <div style={{ ...rootStyles, paddingTop: 0 }}>
         {/* Painel de Trade */}
         {!panelHidden && (
           <aside
@@ -290,11 +330,10 @@ export default function SimuladorPage() {
               flexDirection: "column",
               gap: 10,
               height: "calc(100vh - 62px)",
+              overflow: "hidden",
             }}
           >
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>
-              Painel de Trade
-            </h2>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Painel de Trade</h2>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div style={{ ...card, padding: 10 }}>
@@ -383,7 +422,6 @@ export default function SimuladorPage() {
               </div>
             </div>
 
-            {/* Abas simples */}
             <div style={{ ...card, padding: 10, flex: 1, display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                 {(["fills", "historico", "notas", "dicas", "atalhos"] as const).map((tab) => (
@@ -402,7 +440,7 @@ export default function SimuladorPage() {
               </div>
 
               <div style={{ flex: 1, overflow: "auto" }}>
-                {activeTab === "fills" && (
+                {activeTab === "fills" ? (
                   <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ textAlign: "left", opacity: 0.7 }}>
@@ -431,8 +469,7 @@ export default function SimuladorPage() {
                       )}
                     </tbody>
                   </table>
-                )}
-                {activeTab !== "fills" && (
+                ) : (
                   <div style={{ opacity: 0.8, fontSize: 13 }}>(Em breve)</div>
                 )}
               </div>
@@ -443,8 +480,7 @@ export default function SimuladorPage() {
                 ...btnPrimary,
                 width: "100%",
                 marginTop: 2,
-                background:
-                  "linear-gradient(90deg, #ffc107 0%, #ff9800 100%)",
+                background: "linear-gradient(90deg, #ffc107 0%, #ff9800 100%)",
                 borderColor: "#ff9800",
                 color: "#141b2d",
                 fontWeight: 800,
@@ -457,7 +493,7 @@ export default function SimuladorPage() {
           </aside>
         )}
 
-        {/* Área do gráfico (preenche até o rodapé) */}
+        {/* Gráfico */}
         <section
           style={{
             position: "relative",
@@ -466,10 +502,10 @@ export default function SimuladorPage() {
             borderRadius: 14,
             overflow: "hidden",
             background: "linear-gradient(180deg,#0b1324 0%, #0a142a 100%)",
+            transition: "height .2s ease",
           }}
         >
-          {/* O componente do TradingView */}
-          <TVChart symbol={tvSymbol} interval={tvInterval} />
+          <TVChart symbol={`${exchange}:${pair}`} interval={tvInterval} />
         </section>
       </div>
     </div>
