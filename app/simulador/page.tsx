@@ -1,137 +1,250 @@
-// acrescente perto dos outros estilos/constantes
-const chartOuter: React.CSSProperties = {
-  height: '100%',
-  width: '100%',
-  position: 'relative',  // para posicionar o botão por cima
+"use client";
+
+import React, { useMemo, useState } from "react";
+import TradePanel from "../components/TradePanel";
+
+/** ====== Estilos básicos (inline) ====== */
+const pageWrap: React.CSSProperties = {
+  // ocupa a janela toda (abaixo da barra do navegador)
+  height: "100vh",
+  width: "100%",
+  display: "flex",
+  flexDirection: "column",
+  background: "#0b1220",
+};
+
+const toolbar: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  padding: "8px 12px",
+  borderBottom: "1px solid rgba(255,255,255,0.06)",
+  background: "rgba(13, 21, 35, 0.8)",
+  position: "sticky",
+  top: 0,
+  zIndex: 5,
+};
+
+const selectStyle: React.CSSProperties = {
+  background: "#0f172a",
+  color: "#e2e8f0",
+  border: "1px solid #1f2a44",
+  borderRadius: 8,
+  padding: "6px 10px",
+  outline: "none",
+};
+
+const btn: React.CSSProperties = {
+  background: "#0ea5e9",
+  color: "white",
+  border: 0,
+  borderRadius: 10,
+  padding: "8px 12px",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const layout: React.CSSProperties = {
+  // área de conteúdo ocupa todo o restante da altura
+  flex: 1,
+  display: "grid",
+  gap: 12,
+  padding: 12,
+  minHeight: 0, // para o grid respeitar 100vh sem overflow
+};
+
+const panelCol: React.CSSProperties = {
+  background: "rgba(15, 23, 42, 0.65)",
+  border: "1px solid rgba(255,255,255,0.06)",
+  borderRadius: 12,
+  overflow: "hidden",
+  minWidth: 320,
+};
+
+const chartWrap: React.CSSProperties = {
+  background: "rgba(15, 23, 42, 0.65)",
+  border: "1px solid rgba(255,255,255,0.06)",
+  borderRadius: 12,
+  position: "relative",
+  minWidth: 320,
+  minHeight: 0,
+  overflow: "hidden",
 };
 
 const iframeStyle: React.CSSProperties = {
-  width: '100%',
-  height: '100%',
+  position: "absolute",
+  inset: 0,
+  width: "100%",
+  height: "100%",
   border: 0,
-  display: 'block',
-  minHeight: 480,        // evita altura zero em algum edge case
 };
 
-const fullBtn: React.CSSProperties = {
-  position: 'absolute',
-  top: 8,
-  right: 8,
-  zIndex: 20,            // acima do iframe do TradingView
-  padding: '8px 12px',
-  borderRadius: 8,
-  background: '#0ea5e9',
-  color: '#0b1224',
-  fontWeight: 700,
-  border: 'none',
-  cursor: 'pointer',
-  boxShadow: '0 4px 16px rgba(0,0,0,.35)',
+/** ====== Opções simples ====== */
+const EXCHANGES = ["BINANCE", "BITSTAMP", "COINBASE"];
+const PAIRS: Record<string, string[]> = {
+  BINANCE: ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT"],
+  BITSTAMP: ["BTCUSD", "ETHUSD", "BNBUSD", "SOLUSD", "XRPUSD"],
+  COINBASE: ["BTCUSD", "ETHUSD", "SOLUSD"],
 };
-'use client';
+const INTERVALS = ["1m", "30m", "1h", "4h", "1D"];
 
-import React from 'react';
-import TradePanel from '../components/TradePanel';
-import TVChart from '../components/TVChart';
-
-export default function SimuladorPage() {
-  const [panelSide, setPanelSide] = React.useState<'left' | 'right'>('left');
-  const [panelVisible, setPanelVisible] = React.useState(true);
-
-  return (
-    <main style={container}>
-      {/* painel à esquerda */}
-      {panelVisible && panelSide === 'left' && (
-        <aside style={aside}>
-          <TradePanel />
-        </aside>
-      )}
-
-      {/* área do gráfico */}
-      <section style={chartBox}>
-        <TVChart />
-      </section>
-
-      {/* painel à direita */}
-      {panelVisible && panelSide === 'right' && (
-        <aside style={aside}>
-          <TradePanel />
-        </aside>
-      )}
-
-      {/* botões flutuantes — mesmos comportamentos de antes */}
-      <div style={floatingGroup}>
-        <button
-          className="btn btn-gray"
-          onClick={() => setPanelSide((s) => (s === 'left' ? 'right' : 'left'))}
-          title={panelSide === 'left' ? 'Levar painel para a direita' : 'Levar painel para a esquerda'}
-        >
-          {panelSide === 'left' ? 'Painel → direita' : 'Painel → esquerda'}
-        </button>
-
-        <button
-          className="btn btn-gray"
-          onClick={() => setPanelVisible((v) => !v)}
-          title={panelVisible ? 'Ocultar painel' : 'Mostrar painel'}
-          style={{ marginLeft: 8 }}
-        >
-          {panelVisible ? 'Ocultar painel' : 'Mostrar painel'}
-        </button>
-
-        <button
-          className="btn btn-gray"
-          onClick={() => document.documentElement.requestFullscreen?.()}
-          title="Tela cheia"
-          style={{ marginLeft: 8 }}
-        >
-          ⛶ Tela cheia
-        </button>
-      </div>
-    </main>
-  );
+/** Constrói a URL do widget do TradingView (modo embed) */
+function buildTVUrl(exchange: string, pair: string, interval: string) {
+  // Ex.: BINANCE:BTCUSDT  |  BITSTAMP:BTCUSD
+  const symbol = `${exchange}:${pair}`;
+  const params = new URLSearchParams({
+    symbol,
+    interval,
+    theme: "dark",
+    style: "1",
+    locale: "br",
+    toolbarbg: "rgba(0,0,0,0)",
+    hide_top_toolbar: "0",
+    hide_legend: "0",
+    support_host: "https://www.tradingview.com",
+    // aumenta o espaço útil do gráfico
+    autosize: "true",
+  });
+  return `https://s.tradingview.com/widgetembed/?${params.toString()}`;
 }
 
-/* ========== ESTILOS (apenas layout) ========== */
+export default function SimuladorPage() {
+  // estado dos controles
+  const [exchange, setExchange] = useState<string>("BINANCE");
+  const [pair, setPair] = useState<string>("BTCUSDT");
+  const [interval, setInterval] = useState<string>("1h");
 
-/** ocupa toda a viewport SEM respiro inferior */
-const container: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '360px 1fr',   // largura fixa do painel + área do gráfico
-  gap: 12,
-  height: '100dvh',                   // altura total da janela (dinâmica, funciona no mobile também)
-  padding: '12px 12px 0',             // remove o padding de baixo
-  boxSizing: 'border-box',
-  overflow: 'hidden',                 // evita rolagem indesejada
-};
+  const [panelSide, setPanelSide] = useState<"left" | "right">("left");
+  const [panelVisible, setPanelVisible] = useState<boolean>(true);
+  const [fullTall, setFullTall] = useState<boolean>(true); // mantém 100vh sempre
 
-/** card do painel */
-const aside: React.CSSProperties = {
-  height: '100%',
-  overflow: 'hidden',
-  borderRadius: 12,
-  border: '1px solid rgba(255,255,255,.06)',
-  background: 'linear-gradient(180deg,#0f172a,#0b1224)',
-  boxShadow: '0 8px 30px rgba(0,0,0,.35) inset, 0 0 0 1px rgba(255,255,255,.04)',
-};
+  // URL do iframe do TradingView
+  const tvUrl = useMemo(
+    () => buildTVUrl(exchange, pair, interval),
+    [exchange, pair, interval]
+  );
 
-/** caixa do gráfico — cresce para ocupar tudo */
-const chartBox: React.CSSProperties = {
-  height: '100%',
-  width: '100%',
-  borderRadius: 12,
-  border: '1px solid rgba(255,255,255,.06)',
-  background: 'linear-gradient(180deg,#0f172a,#0b1224)',
-  boxShadow: '0 8px 30px rgba(0,0,0,.35) inset, 0 0 0 1px rgba(255,255,255,.04)',
-  overflow: 'hidden',
-  display: 'flex',
-  flexDirection: 'column',
-};
+  // grid template conforme posição/visibilidade do painel
+  const gridTemplate = useMemo(() => {
+    const panelWidth = 360;
+    if (!panelVisible) {
+      return { gridTemplateColumns: "1fr" };
+    }
+    return panelSide === "left"
+      ? { gridTemplateColumns: `${panelWidth}px 1fr` }
+      : { gridTemplateColumns: `1fr ${panelWidth}px` };
+  }, [panelSide, panelVisible]);
 
-/** grupo de botões no topo direito da área do gráfico */
-const floatingGroup: React.CSSProperties = {
-  position: 'fixed',
-  top: 12,
-  right: 12,
-  display: 'flex',
-  alignItems: 'center',
-  zIndex: 50,
-};
+  // pares por exchange
+  const pairOptions = PAIRS[exchange] ?? [];
+
+  // sincroniza par quando troca de exchange (garante par válido)
+  React.useEffect(() => {
+    if (!pairOptions.includes(pair)) setPair(pairOptions[0] || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exchange]);
+
+  return (
+    <div style={{ ...pageWrap, height: fullTall ? "100vh" : "100vh" }}>
+      {/* Barra de controles */}
+      <div style={toolbar}>
+        <label style={{ color: "#94a3b8", fontSize: 13 }}>Exchange</label>
+        <select
+          value={exchange}
+          onChange={(e) => setExchange(e.target.value)}
+          style={selectStyle}
+        >
+          {EXCHANGES.map((ex) => (
+            <option key={ex} value={ex}>
+              {ex}
+            </option>
+          ))}
+        </select>
+
+        <label style={{ color: "#94a3b8", fontSize: 13 }}>Par</label>
+        <select
+          value={pair}
+          onChange={(e) => setPair(e.target.value)}
+          style={selectStyle}
+        >
+          {pairOptions.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+
+        <label style={{ color: "#94a3b8", fontSize: 13 }}>Tempo</label>
+        <select
+          value={interval}
+          onChange={(e) => setInterval(e.target.value)}
+          style={selectStyle}
+        >
+          {INTERVALS.map((i) => (
+            <option key={i} value={i}>
+              {i}
+            </option>
+          ))}
+        </select>
+
+        <div style={{ flex: 1 }} />
+
+        {/* Botões utilitários (mantidos) */}
+        <button
+          style={btn}
+          onClick={() =>
+            setPanelSide((s) => (s === "left" ? "right" : "left"))
+          }
+          title="Mover painel"
+        >
+          {panelSide === "left" ? "Painel → direita" : "Painel → esquerda"}
+        </button>
+
+        <button
+          style={{ ...btn, background: "#334155" }}
+          onClick={() => setPanelVisible((v) => !v)}
+          title="Ocultar/Mostrar painel"
+        >
+          {panelVisible ? "Ocultar painel" : "Mostrar painel"}
+        </button>
+
+        <button
+          style={{ ...btn, background: "#0ea5e9" }}
+          onClick={() => setFullTall((f) => !f)}
+          title="Tela cheia (altura 100%)"
+        >
+          Tela cheia
+        </button>
+      </div>
+
+      {/* Área principal (grid) */}
+      <div style={{ ...layout, ...gridTemplate }}>
+        {/* Painel de trade (opcionalmente visível) */}
+        {panelVisible && panelSide === "left" && (
+          <div style={panelCol}>
+            <TradePanel />
+          </div>
+        )}
+
+        {/* Gráfico TradingView */}
+        <div style={chartWrap}>
+          <iframe
+            title="TradingView"
+            src={tvUrl}
+            style={iframeStyle}
+            loading="eager"
+            referrerPolicy="no-referrer-when-downgrade"
+            sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+          />
+        </div>
+
+        {/* Painel do lado direito, se escolhido */}
+        {panelVisible && panelSide === "right" && (
+          <div style={panelCol}>
+            <TradePanel />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
