@@ -1,3 +1,32 @@
+// acrescente perto dos outros estilos/constantes
+const chartOuter: React.CSSProperties = {
+  height: '100%',
+  width: '100%',
+  position: 'relative',  // para posicionar o botão por cima
+};
+
+const iframeStyle: React.CSSProperties = {
+  width: '100%',
+  height: '100%',
+  border: 0,
+  display: 'block',
+  minHeight: 480,        // evita altura zero em algum edge case
+};
+
+const fullBtn: React.CSSProperties = {
+  position: 'absolute',
+  top: 8,
+  right: 8,
+  zIndex: 20,            // acima do iframe do TradingView
+  padding: '8px 12px',
+  borderRadius: 8,
+  background: '#0ea5e9',
+  color: '#0b1224',
+  fontWeight: 700,
+  border: 'none',
+  cursor: 'pointer',
+  boxShadow: '0 4px 16px rgba(0,0,0,.35)',
+};
 'use client';
 
 import React from 'react';
