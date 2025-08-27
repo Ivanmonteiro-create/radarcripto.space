@@ -1,164 +1,122 @@
+// app/simulador/page.tsx
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
+import TVChart from "../components/TVChart";
 import TradePanel from "../components/TradePanel";
 
+type Ex = "BINANCE" | "BITSTAMP" | "COINBASE";
 type Pair = "BTCUSDT" | "ETHUSDT" | "BNBUSDT" | "SOLUSDT" | "XRPUSDT";
-type Interval = "1" | "5" | "60" | "240" | "D"; // TradingView: 1m, 5m, 1h, 4h, 1D
-type Exchange = "BINANCE" | "BITSTAMP" | "COINBASE";
+type TF = "1m" | "5m" | "15m" | "30m" | "1h" | "4h" | "1d";
 
 export default function SimuladorPage() {
-  const [exchange, setExchange] = useState<Exchange>("BINANCE");
+  const [exchange, setExchange] = useState<Ex>("BINANCE");
   const [pair, setPair] = useState<Pair>("BTCUSDT");
-  const [interval, setInterval] = useState<Interval>("60"); // 60 = 1h
-  const [panelRight, setPanelRight] = useState<boolean>(true);
-
-  const tvSrc = useMemo(() => {
-    const sym = `${exchange}:${pair}`;
-    const url = new URL("https://s.tradingview.com/widgetembed/");
-    url.searchParams.set("symbol", sym);
-    url.searchParams.set("interval", interval);
-    url.searchParams.set("hidesidetoolbar", "0");
-    url.searchParams.set("hideideas", "1");
-    url.searchParams.set("theme", "dark");
-    url.searchParams.set("style", "1");
-    url.searchParams.set("withdateranges", "1");
-    url.searchParams.set("allow_symbol_change", "1");
-    url.searchParams.set("saveimage", "1");
-    url.searchParams.set("studies", "");
-    return url.toString();
-  }, [exchange, pair, interval]);
+  const [timeframe, setTimeframe] = useState<TF>("1h");
+  const [panelRight, setPanelRight] = useState(false);
 
   return (
-    <main style={page}>
-      {/* toolbar superior */}
-      <div style={toolbar}>
-        <div style={leftGroup}>
-          <label style={tbLabel}>Exchange</label>
-          <select value={exchange} onChange={(e) => setExchange(e.target.value as Exchange)} style={tbSelect}>
-            <option>BINANCE</option>
-            <option>BITSTAMP</option>
-            <option>COINBASE</option>
-          </select>
+    <main style={container}>
+      {/* barra de controles no topo do gráfico */}
+      <div style={topBar}>
+        <div style={selectors}>
+          <div style={selectBox}>
+            <label style={label}>Exchange</label>
+            <select value={exchange} onChange={(e) => setExchange(e.target.value as Ex)} style={select}>
+              <option>BINANCE</option>
+              <option>BITSTAMP</option>
+              <option>COINBASE</option>
+            </select>
+          </div>
 
-          <label style={tbLabel}>Par</label>
-          <select value={pair} onChange={(e) => setPair(e.target.value as Pair)} style={tbSelect}>
-            <option>BTCUSDT</option>
-            <option>ETHUSDT</option>
-            <option>BNBUSDT</option>
-            <option>SOLUSDT</option>
-            <option>XRPUSDT</option>
-          </select>
+          <div style={selectBox}>
+            <label style={label}>Par</label>
+            <select value={pair} onChange={(e) => setPair(e.target.value as Pair)} style={select}>
+              <option>BTCUSDT</option>
+              <option>ETHUSDT</option>
+              <option>BNBUSDT</option>
+              <option>SOLUSDT</option>
+              <option>XRPUSDT</option>
+            </select>
+          </div>
 
-          <label style={tbLabel}>Tempo</label>
-          <select value={interval} onChange={(e) => setInterval(e.target.value as Interval)} style={tbSelect}>
-            <option value="1">1m</option>
-            <option value="5">5m</option>
-            <option value="60">1h</option>
-            <option value="240">4h</option>
-            <option value="D">1D</option>
-          </select>
+          <div style={selectBox}>
+            <label style={label}>Tempo</label>
+            <select value={timeframe} onChange={(e) => setTimeframe(e.target.value as TF)} style={select}>
+              <option>1m</option><option>5m</option><option>15m</option>
+              <option>30m</option><option>1h</option><option>4h</option><option>1d</option>
+            </select>
+          </div>
         </div>
 
-        <button style={swapBtn} onClick={() => setPanelRight((v) => !v)}>
-          Painel ↔ {panelRight ? "direita" : "esquerda"}
+        <button style={toggleBtn} onClick={() => setPanelRight((v) => !v)}>
+          Painel → {panelRight ? "esquerda" : "direita"}
         </button>
       </div>
 
-      {/* grade principal */}
-      <div
-        style={{
-          ...grid,
-          gridTemplateColumns: panelRight ? "1fr 380px" : "380px 1fr",
-        }}
-      >
-        {/* gráfico — ocupa quase a tela toda */}
-        {panelRight ? <Chart tvSrc={tvSrc} /> : <TradePanel />}
-        {panelRight ? <TradePanel /> : <Chart tvSrc={tvSrc} />}
+      {/* grid principal */}
+      <div style={{ ...grid, gridTemplateColumns: panelRight ? "1fr 360px" : "360px 1fr" }}>
+        {!panelRight && <TradePanel />}
+        <div style={chartWrap}>
+          <TVChart exchange={exchange} pair={pair} timeframe={timeframe} />
+        </div>
+        {panelRight && <TradePanel />}
       </div>
     </main>
   );
 }
 
-/* subcomponente do gráfico (iframe) */
-function Chart({ tvSrc }: { tvSrc: string }) {
-  return (
-    <section style={chartBox}>
-      <iframe
-        title="TradingView"
-        src={tvSrc}
-        style={iframe}
-        frameBorder="0"
-        allowTransparency
-        allowFullScreen
-        sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-      />
-    </section>
-  );
-}
+/* estilos */
 
-/* ================ styles ================= */
-
-const page: React.CSSProperties = {
+const container: React.CSSProperties = {
   minHeight: "100vh",
-  background: "#0a1020",
-  color: "#e6eef8",
-  padding: "14px 12px",
-  boxSizing: "border-box",
+  background: "#0a0f1a",
+  color: "white",
+  padding: 12,
 };
 
-const toolbar: React.CSSProperties = {
+const topBar: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
   gap: 12,
-  marginBottom: 10,
+  marginBottom: 8,
 };
 
-const leftGroup: React.CSSProperties = { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" };
-
-const tbLabel: React.CSSProperties = { fontSize: 12, opacity: .8 };
-const tbSelect: React.CSSProperties = {
-  background: "#0e172b",
-  color: "#e6eef8",
-  border: "1px solid #1f2a44",
+const selectors: React.CSSProperties = { display: "flex", gap: 12, flexWrap: "wrap" };
+const selectBox: React.CSSProperties = { display: "flex", flexDirection: "column" };
+const label: React.CSSProperties = { fontSize: 11, opacity: 0.7, marginBottom: 4 };
+const select: React.CSSProperties = {
+  height: 36,
   borderRadius: 8,
-  padding: "8px 10px",
+  border: "1px solid rgba(255,255,255,0.15)",
+  background: "rgba(0,0,0,0.25)",
+  color: "white",
+  padding: "0 10px",
+  outline: "none",
 };
 
-const swapBtn: React.CSSProperties = {
+const toggleBtn: React.CSSProperties = {
   background: "#0ea5e9",
-  border: "none",
-  color: "#081018",
-  padding: "10px 14px",
+  border: "1px solid rgba(14,165,233,0.5)",
+  color: "#071018",
+  padding: "8px 12px",
   borderRadius: 10,
-  fontWeight: 700,
-  cursor: "pointer",
+  fontWeight: 800,
 };
 
 const grid: React.CSSProperties = {
   display: "grid",
   gap: 12,
-  // altura total menos a barra superior
-  gridAutoRows: "1fr",
+  alignItems: "stretch",
+  gridTemplateColumns: "360px 1fr",
+  // ocupar altura inteira, deixando um respiro inferior pequeno
+  minHeight: "calc(100vh - 80px)",
 };
 
-const chartBox: React.CSSProperties = {
-  position: "relative",
-  zIndex: 1,
-  background: "#0b1220",
-  border: "1px solid #1f2a44",
+const chartWrap: React.CSSProperties = {
   borderRadius: 12,
   overflow: "hidden",
-  // ocupa quase a tela toda
-  height: "calc(100vh - 110px)",
-  minHeight: 480,
-};
-
-const iframe: React.CSSProperties = {
-  position: "absolute",
-  inset: 0,
-  width: "100%",
-  height: "100%",
-  border: "none",
+  border: "1px solid rgba(255,255,255,0.08)",
+  background: "#0b1220",
 };
