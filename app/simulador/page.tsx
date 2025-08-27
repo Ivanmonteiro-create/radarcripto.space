@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import TradePanel from "../components/TradePanel";
 
-/** ====== Estilos básicos (inline) ====== */
+/* ===== Estilos ===== */
 const pageWrap: React.CSSProperties = {
-  // ocupa a janela toda (abaixo da barra do navegador)
   height: "100vh",
   width: "100%",
   display: "flex",
@@ -45,12 +44,11 @@ const btn: React.CSSProperties = {
 };
 
 const layout: React.CSSProperties = {
-  // área de conteúdo ocupa todo o restante da altura
   flex: 1,
   display: "grid",
   gap: 12,
   padding: 12,
-  minHeight: 0, // para o grid respeitar 100vh sem overflow
+  minHeight: 0,
 };
 
 const panelCol: React.CSSProperties = {
@@ -79,7 +77,7 @@ const iframeStyle: React.CSSProperties = {
   border: 0,
 };
 
-/** ====== Opções simples ====== */
+/* ===== Opções ===== */
 const EXCHANGES = ["BINANCE", "BITSTAMP", "COINBASE"];
 const PAIRS: Record<string, string[]> = {
   BINANCE: ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT"],
@@ -88,65 +86,73 @@ const PAIRS: Record<string, string[]> = {
 };
 const INTERVALS = ["1m", "30m", "1h", "4h", "1D"];
 
-/** Constrói a URL do widget do TradingView (modo embed) */
+/* Mapeia intervalo para o formato aceito no Advanced Chart */
+const TV_INTERVAL_MAP: Record<string, string> = {
+  "1m": "1",
+  "30m": "30",
+  "1h": "60",
+  "4h": "240",
+  "1D": "D",
+};
+
+/** Construção da URL estável do TradingView (Advanced Chart) */
 function buildTVUrl(exchange: string, pair: string, interval: string) {
-  // Ex.: BINANCE:BTCUSDT  |  BITSTAMP:BTCUSD
   const symbol = `${exchange}:${pair}`;
-  const params = new URLSearchParams({
+  const tvInterval = TV_INTERVAL_MAP[interval] ?? "60";
+
+  const config = {
     symbol,
-    interval,
+    interval: tvInterval,
     theme: "dark",
-    style: "1",
-    locale: "br",
-    toolbarbg: "rgba(0,0,0,0)",
-    hide_top_toolbar: "0",
-    hide_legend: "0",
+    hide_top_toolbar: false,
+    hide_legend: false,
+    allow_symbol_change: true,
+    save_image: true,
+    calendar: false,
+    studies: ["Volume@tv-basicstudies"],
     support_host: "https://www.tradingview.com",
-    // aumenta o espaço útil do gráfico
-    autosize: "true",
-  });
-  return `https://s.tradingview.com/widgetembed/?${params.toString()}`;
+    autosize: true,
+    locale: "br",
+  };
+
+  // JSON no hash (#) e codificado
+  const cfg = encodeURIComponent(JSON.stringify(config));
+  return `https://s.tradingview.com/embed-widget-advanced-chart/?locale=br#${cfg}`;
 }
 
 export default function SimuladorPage() {
-  // estado dos controles
   const [exchange, setExchange] = useState<string>("BINANCE");
   const [pair, setPair] = useState<string>("BTCUSDT");
   const [interval, setInterval] = useState<string>("1h");
 
   const [panelSide, setPanelSide] = useState<"left" | "right">("left");
   const [panelVisible, setPanelVisible] = useState<boolean>(true);
-  const [fullTall, setFullTall] = useState<boolean>(true); // mantém 100vh sempre
+  const [fullTall, setFullTall] = useState<boolean>(true);
 
-  // URL do iframe do TradingView
   const tvUrl = useMemo(
     () => buildTVUrl(exchange, pair, interval),
     [exchange, pair, interval]
   );
 
-  // grid template conforme posição/visibilidade do painel
+  const pairOptions = PAIRS[exchange] ?? [];
+
+  // Garante par válido quando troca a exchange
+  useEffect(() => {
+    if (!pairOptions.includes(pair)) setPair(pairOptions[0] || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exchange]);
+
   const gridTemplate = useMemo(() => {
     const panelWidth = 360;
-    if (!panelVisible) {
-      return { gridTemplateColumns: "1fr" };
-    }
+    if (!panelVisible) return { gridTemplateColumns: "1fr" };
     return panelSide === "left"
       ? { gridTemplateColumns: `${panelWidth}px 1fr` }
       : { gridTemplateColumns: `1fr ${panelWidth}px` };
   }, [panelSide, panelVisible]);
 
-  // pares por exchange
-  const pairOptions = PAIRS[exchange] ?? [];
-
-  // sincroniza par quando troca de exchange (garante par válido)
-  React.useEffect(() => {
-    if (!pairOptions.includes(pair)) setPair(pairOptions[0] || "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exchange]);
-
   return (
     <div style={{ ...pageWrap, height: fullTall ? "100vh" : "100vh" }}>
-      {/* Barra de controles */}
+      {/* Toolbar */}
       <div style={toolbar}>
         <label style={{ color: "#94a3b8", fontSize: 13 }}>Exchange</label>
         <select
@@ -189,13 +195,11 @@ export default function SimuladorPage() {
 
         <div style={{ flex: 1 }} />
 
-        {/* Botões utilitários (mantidos) */}
         <button
           style={btn}
           onClick={() =>
             setPanelSide((s) => (s === "left" ? "right" : "left"))
           }
-          title="Mover painel"
         >
           {panelSide === "left" ? "Painel → direita" : "Painel → esquerda"}
         </button>
@@ -203,7 +207,6 @@ export default function SimuladorPage() {
         <button
           style={{ ...btn, background: "#334155" }}
           onClick={() => setPanelVisible((v) => !v)}
-          title="Ocultar/Mostrar painel"
         >
           {panelVisible ? "Ocultar painel" : "Mostrar painel"}
         </button>
@@ -211,34 +214,31 @@ export default function SimuladorPage() {
         <button
           style={{ ...btn, background: "#0ea5e9" }}
           onClick={() => setFullTall((f) => !f)}
-          title="Tela cheia (altura 100%)"
         >
           Tela cheia
         </button>
       </div>
 
-      {/* Área principal (grid) */}
+      {/* Grid principal */}
       <div style={{ ...layout, ...gridTemplate }}>
-        {/* Painel de trade (opcionalmente visível) */}
         {panelVisible && panelSide === "left" && (
           <div style={panelCol}>
             <TradePanel />
           </div>
         )}
 
-        {/* Gráfico TradingView */}
         <div style={chartWrap}>
+          {/* AVISO: sem sandbox para evitar “Algo deu errado…” */}
           <iframe
-            title="TradingView"
+            title="TradingView Advanced Chart"
             src={tvUrl}
             style={iframeStyle}
             loading="eager"
-            referrerPolicy="no-referrer-when-downgrade"
-            sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+            allow="fullscreen; clipboard-write; encrypted-media; autoplay"
+            allowFullScreen
           />
         </div>
 
-        {/* Painel do lado direito, se escolhido */}
         {panelVisible && panelSide === "right" && (
           <div style={panelCol}>
             <TradePanel />
