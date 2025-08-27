@@ -1,270 +1,332 @@
 "use client";
-import React from "react";
 
-type Side = "BUY" | "SELL";
-type Fill = { time: string; side: Side; qty: number; price: number };
+import React, { useMemo, useState } from "react";
+import Link from "next/link";
 
-type State = {
-  balance: number;        // caixa (USD)
-  realizedPnl: number;    // PnL realizado acumulado
-  positionQty: number;    // +long / -short (em “unidades” do ativo)
-  avgPrice: number;       // preço médio da posição aberta (0 se não há posição)
-  fills: Fill[];          // histórico de execuções
-};
+/**
+ * Painel de Trade “mock” para simulação local
+ * - créditos: saldo virtual inicial
+ * - realized: PnL realizado
+ * - qty/price: controles básicos
+ * - fills: tabela com execuções simuladas
+ *
+ * OBS: É um simulador local, sem backend.
+ */
 
-const FEE_RATE = 0.001;   // 0.10%
+type FillSide = "BUY" | "SELL";
 
-const LS_KEY = "rcp_sim_state_v1";
-
-function loadState(): State {
-  if (typeof window === "undefined") return defaultState;
-  try {
-    const raw = window.localStorage.getItem(LS_KEY);
-    if (!raw) return defaultState;
-    const parsed = JSON.parse(raw) as State;
-    // sanity defaults
-    return {
-      balance: parsed.balance ?? 100_000,
-      realizedPnl: parsed.realizedPnl ?? 0,
-      positionQty: parsed.positionQty ?? 0,
-      avgPrice: parsed.avgPrice ?? 0,
-      fills: Array.isArray(parsed.fills) ? parsed.fills : [],
-    };
-  } catch {
-    return defaultState;
-  }
-}
-
-const defaultState: State = {
-  balance: 100_000,
-  realizedPnl: 0,
-  positionQty: 0,
-  avgPrice: 0,
-  fills: [],
+type Fill = {
+  time: string;     // HH:mm:ss
+  side: FillSide;
+  qty: number;
+  price: number;
 };
 
 export default function TradePanel() {
-  const [state, setState] = React.useState<State>(defaultState);
-  const [price, setPrice] = React.useState<number>(10000);
-  const [qty, setQty] = React.useState<number>(1);
+  // estado base
+  const [credits, setCredits] = useState<number>(100_000);
+  const [realized, setRealized] = useState<number>(0);
+  const [side, setSide] = useState<FillSide>("BUY");
+  const [qty, setQty] = useState<number>(1);
+  const [price, setPrice] = useState<number>(10_000);
+  const [fills, setFills] = useState<Fill[]>([]);
 
-  // carregar do localStorage
-  React.useEffect(() => {
-    setState(loadState());
-  }, []);
+  // posição líquida e preço médio
+  const { net, avgPrice, unrealized } = useMemo(() => {
+    let position = 0;
+    let cost = 0;
 
-  // salvar a cada mudança
-  React.useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(LS_KEY, JSON.stringify(state));
+    for (const f of fills) {
+      if (f.side === "BUY") {
+        position += f.qty;
+        cost += f.qty * f.price;
+      } else {
+        // venda reduz posição; se estiver positivo, realiza PnL
+        const closing = Math.min(Math.max(position, 0), f.qty);
+        const avg = position > 0 ? cost / Math.max(position, 1) : 0;
+        const realizedNow = closing * (f.price - avg);
+        setTimeout(() => setRealized((r) => r + realizedNow), 0);
+
+        position -= f.qty;
+        if (position >= 0) {
+          cost -= closing * avg;
+        } else {
+          // virou short: custo passa a ser preço da venda excedente
+          cost = -position * f.price;
+        }
+      }
     }
-  }, [state]);
 
-  const equity = state.balance + state.realizedPnl + unrealizedPnl(state, price);
+    const avg = position !== 0 ? cost / Math.abs(position) : 0;
 
-  function unrealizedPnl(s: State, mark: number) {
-    if (s.positionQty === 0) return 0;
-    const diff = (mark - s.avgPrice) * s.positionQty; // se qty < 0 vira short
-    return diff;
+    // PnL não realizado sobre “price” atual do input, só pra referência
+    const mark = price;
+    let u = 0;
+    if (position > 0) u = (mark - avg) * position;
+    else if (position < 0) u = (avg - mark) * Math.abs(position);
+
+    return { net: position, avgPrice: avg, unrealized: u };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fills, price]);
+
+  function addFill(s: FillSide) {
+    const f: Fill = {
+      time: new Date().toLocaleTimeString("pt-BR", { hour12: false }),
+      side: s,
+      qty: Math.max(0, Math.floor(qty)),
+      price: Math.max(0, Math.floor(price)),
+    };
+    if (!f.qty || !f.price) return;
+    setFills((arr) => [f, ...arr.slice(0, 99)]);
   }
 
-  function addFill(side: Side, q: number, p: number) {
-    setState((prev) => ({
-      ...prev,
-      fills: [{ time: new Date().toLocaleTimeString(), side, qty: q, price: p }, ...prev.fills].slice(0, 100),
-    }));
-  }
-
-  function trade(side: Side) {
-    if (qty <= 0 || price <= 0) return;
-
-    // custo bruto e taxa
-    const notional = qty * price;
-    const fee = notional * FEE_RATE;
-
-    setState((prev) => {
-      let { balance, realizedPnl, positionQty, avgPrice } = prev;
-
-      if (side === "BUY") {
-        // se estamos short (qty negativa) e compramos, pode fechar parcial/total
-        if (positionQty < 0) {
-          const closingQty = Math.min(qty, Math.abs(positionQty));
-          // PnL realizado sobre a parte fechada
-          realizedPnl += (avgPrice - price) * closingQty; // short: ganha quando preço cai
-          positionQty += closingQty; // aproximando a zero
-          // taxa
-          balance -= fee;
-          // ainda há sobra para abrir long?
-          const remainder = qty - closingQty;
-          if (remainder > 0) {
-            // abre/incrementa long
-            const newNotional = remainder * price;
-            const newQty = positionQty + remainder; // agora >= 0
-            avgPrice = newQty === 0 ? 0 : (positionQty * avgPrice + remainder * price) / newQty;
-            positionQty = newQty;
-            balance -= newNotional * FEE_RATE; // taxa da sobra também
-          }
-        } else {
-          // abrir/incrementar long
-          const newQty = positionQty + qty;
-          avgPrice = newQty === 0 ? 0 : (positionQty * avgPrice + qty * price) / newQty;
-          positionQty = newQty;
-          balance -= fee;
-        }
-      } else {
-        // SELL
-        if (positionQty > 0) {
-          const closingQty = Math.min(qty, Math.abs(positionQty));
-          realizedPnl += (price - avgPrice) * closingQty; // long: ganha quando sobe
-          positionQty -= closingQty;
-          balance -= fee;
-          const remainder = qty - closingQty;
-          if (remainder > 0) {
-            // abre/incrementa short
-            const newQty = positionQty - remainder; // mais negativo
-            avgPrice = newQty === 0 ? 0 : (positionQty * avgPrice + remainder * price) / newQty;
-            positionQty = newQty;
-            balance -= (remainder * price) * FEE_RATE;
-          }
-        } else {
-          // abrir/incrementar short
-          const newQty = positionQty - qty; // vai diminuindo
-          avgPrice = newQty === 0 ? 0 : (positionQty * avgPrice + qty * price) / Math.abs(newQty) * (newQty < 0 ? -1 : 1);
-          // a fórmula acima mantém avgPrice numericamente correto; alternativa simples:
-          avgPrice = positionQty === 0 ? price : avgPrice; // para short simples, isso basta
-          positionQty = newQty;
-          balance -= fee;
-        }
-      }
-
-      addFill(side, qty, price);
-      return { balance, realizedPnl, positionQty, avgPrice: positionQty === 0 ? 0 : avgPrice, fills: prev.fills };
-    });
-  }
-
-  function zeroPosition() {
-    setState((prev) => {
-      if (prev.positionQty === 0) return prev;
-      const p = price;
-      let realizedPnl = prev.realizedPnl;
-      if (prev.positionQty > 0) {
-        // fechar long
-        realizedPnl += (p - prev.avgPrice) * prev.positionQty;
-      } else {
-        // fechar short
-        realizedPnl += (prev.avgPrice - p) * Math.abs(prev.positionQty);
-      }
-      const fee = Math.abs(prev.positionQty) * p * FEE_RATE;
-      addFill(prev.positionQty > 0 ? "SELL" : "BUY", Math.abs(prev.positionQty), p);
-      return {
-        ...prev,
-        realizedPnl,
-        positionQty: 0,
-        avgPrice: 0,
-        balance: prev.balance - fee,
-      };
-    });
-  }
-
-  function resetAccount() {
-    setState(defaultState);
+  function resetAll() {
+    setFills([]);
+    setRealized(0);
+    setQty(1);
+    setPrice(10_000);
   }
 
   return (
     <div style={panelShell}>
-      <h2 style={title}>Painel de Trade</h2>
+      {/* topo com CTA */}
+      <div style={headerRow}>
+        <h2 style={title}>Painel de Trade</h2>
+        <Link href="/planos">
+          <button style={ctaBtn}>Comprar Plano</button>
+        </Link>
+      </div>
 
-      <div style={row}>
+      {/* saldo e pnl */}
+      <div style={statRow}>
         <div style={statBox}>
-          <div style={statLabel}>Créditos</div>
-          <div style={statValue}>US$ {state.balance.toLocaleString()}</div>
+          <span style={label}>Créditos</span>
+          <strong style={value}>US$ {credits.toLocaleString()}</strong>
         </div>
         <div style={statBox}>
-          <div style={statLabel}>Lucro Realizado</div>
-          <div style={{...statValue, color: state.realizedPnl >= 0 ? "#12d98a" : "#ff6b6b"}}>
-            US$ {state.realizedPnl.toFixed(2)}
+          <span style={label}>Lucro Realizado</span>
+          <strong style={{ ...value, color: realized >= 0 ? "#22c55e" : "#ef4444" }}>
+            US$ {realized.toFixed(2)}
+          </strong>
+        </div>
+      </div>
+
+      {/* controles */}
+      <div style={controlsRow}>
+        <div style={controlCol}>
+          <span style={smallLabel}>Lado</span>
+          <select
+            value={side}
+            onChange={(e) => setSide(e.target.value as FillSide)}
+            style={select}
+          >
+            <option value="BUY">BUY (Long)</option>
+            <option value="SELL">SELL (Short)</option>
+          </select>
+        </div>
+        <div style={controlCol}>
+          <span style={smallLabel}>Qtd</span>
+          <input
+            type="number"
+            value={qty}
+            onChange={(e) => setQty(Number(e.target.value))}
+            style={input}
+          />
+        </div>
+        <div style={controlCol}>
+          <span style={smallLabel}>Preço</span>
+          <input
+            type="number"
+            value={price}
+            onChange={(e) => setPrice(Number(e.target.value))}
+            style={input}
+          />
+        </div>
+        <div style={buttonsCol}>
+          <button onClick={() => addFill("BUY")} style={buyBtn}>Buy</button>
+          <button onClick={() => addFill("SELL")} style={sellBtn}>Sell</button>
+          <button onClick={resetAll} style={resetBtn}>Reset</button>
+        </div>
+      </div>
+
+      {/* posição */}
+      <div style={positionBox}>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <div><b>Posição:</b> {net >= 0 ? "Long" : "Short"} {Math.abs(net)}</div>
+          <div><b>Preço Médio:</b> {avgPrice ? `US$ ${avgPrice.toFixed(2)}` : "—"}</div>
+          <div>
+            <b>PNL não realizado (mark={price.toLocaleString()}):</b>{" "}
+            <span style={{ color: unrealized >= 0 ? "#22c55e" : "#ef4444" }}>
+              US$ {unrealized.toFixed(2)}
+            </span>
           </div>
         </div>
-        <div style={statBox}>
-          <div style={statLabel}>Equity (c/ não realizado)</div>
-          <div style={{...statValue, color: equity >= state.balance ? "#12d98a" : "#ff6b6b"}}>
-            US$ {equity.toFixed(2)}
-          </div>
-        </div>
       </div>
 
-      <div style={row}>
-        <label style={label}>Preço</label>
-        <input
-          type="number"
-          value={price}
-          onChange={(e) => setPrice(Number(e.target.value))}
-          style={input}
-        />
-        <label style={label}>Qtd</label>
-        <input
-          type="number"
-          value={qty}
-          min={0}
-          onChange={(e) => setQty(Number(e.target.value))}
-          style={input}
-        />
-
-        <button onClick={() => trade("BUY")} style={{...btn, background:"#16a34a"}}>Buy</button>
-        <button onClick={() => trade("SELL")} style={{...btn, background:"#dc2626"}}>Sell</button>
-        <button onClick={zeroPosition} style={{...btn, background:"#334155"}}>Zerar posição</button>
-        <button onClick={resetAccount} style={{...btn, background:"#0ea5e9"}}>Resetar conta</button>
-      </div>
-
-      <div style={posBox}>
-        <div>Posição: <b>{state.positionQty}</b> @ {state.avgPrice ? state.avgPrice.toFixed(2) : "-"}</div>
-        <div>PNL não realizado (mark={price}):{" "}
-          <b style={{color: unrealizedPnl(state, price) >= 0 ? "#12d98a" : "#ff6b6b"}}>
-            US$ {unrealizedPnl(state, price).toFixed(2)}
-          </b>
-        </div>
-        <div style={{opacity:.6, fontSize:12}}>Taxa por ordem: {(FEE_RATE*100).toFixed(2)}%</div>
-      </div>
-
-      <h3 style={{margin:"12px 0 6px"}}>Fills</h3>
-      <div style={fillsTable}>
+      {/* fills */}
+      <div style={fillsBox}>
+        <div style={{ marginBottom: 6, fontWeight: 700 }}>Fills</div>
         <div style={fillsHead}>
           <span>Hora</span><span>Lado</span><span>Qtd</span><span>Preço</span>
         </div>
-        <div>
-          {state.fills.length === 0 ? (
-            <div style={{opacity:.5, padding:"6px"}}>Nenhum ainda</div>
-          ) : state.fills.map((f, i) => (
-            <div key={i} style={fillsRow}>
-              <span>{f.time}</span>
-              <span style={{color: f.side === "BUY" ? "#12d98a" : "#ff6b6b"}}>{f.side}</span>
-              <span>{f.qty}</span>
-              <span>{f.price}</span>
-            </div>
-          ))}
+        <div style={{ maxHeight: 180, overflow: "auto" }}>
+          {fills.length === 0 ? (
+            <div style={{ opacity: .7, padding: "8px 0" }}>Nenhum ainda</div>
+          ) : (
+            fills.map((f, i) => (
+              <div key={i} style={fillsRow}>
+                <span>{f.time}</span>
+                <span style={{ color: f.side === "BUY" ? "#22c55e" : "#ef4444" }}>{f.side}</span>
+                <span>{f.qty}</span>
+                <span>{f.price.toLocaleString()}</span>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-/* ======== estilos inline simples (seguindo seu visual) ======== */
+/* ================= styles ================= */
+
 const panelShell: React.CSSProperties = {
-  background:"#0b1220",
-  border:"1px solid #1f2a44",
-  borderRadius:10,
-  padding:"12px 12px 16px",
-  color:"#e6eef8",
+  position: "relative",
+  zIndex: 5,                 // garante ficar acima do iframe
+  background: "#0b1220",
+  border: "1px solid #1f2a44",
+  borderRadius: 12,
+  padding: "12px 12px 16px",
+  color: "#e6eef8",
+  width: 360,
 };
-const title: React.CSSProperties = { margin:"0 0 8px", fontSize:20, letterSpacing:.2 };
-const row: React.CSSProperties = { display:"flex", gap:8, alignItems:"center", flexWrap:"wrap", margin:"6px 0" };
-const label: React.CSSProperties = { fontSize:12, opacity:.7 };
-const input: React.CSSProperties = { background:"#0f172a", color:"#e6eef8", border:"1px solid #23314f", padding:"6px 8px", borderRadius:6, width:110 };
-const btn: React.CSSProperties = { color:"#fff", border:"none", padding:"8px 10px", borderRadius:8, cursor:"pointer" };
-const statBox: React.CSSProperties = { background:"#0f172a", border:"1px solid #23314f", borderRadius:8, padding:"8px 10px", minWidth:180 };
-const statLabel: React.CSSProperties = { fontSize:12, opacity:.7, marginBottom:4 };
-const statValue: React.CSSProperties = { fontSize:18, fontWeight:700 };
-const posBox: React.CSSProperties = { background:"#0f172a", border:"1px solid #23314f", borderRadius:8, padding:"8px 10px", marginTop:6, display:"flex", gap:16, flexWrap:"wrap" };
-const fillsTable: React.CSSProperties = { border:"1px solid #23314f", borderRadius:8, overflow:"hidden" };
-const fillsHead: React.CSSProperties = { display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", background:"#101a33", padding:"6px 8px", fontSize:12, opacity:.8 };
-const fillsRow: React.CSSProperties = { display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", padding:"6px 8px", borderTop:"1px solid #1a2744", fontSize:13 };
+
+const headerRow: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  marginBottom: 8,
+};
+
+const title: React.CSSProperties = {
+  margin: 0,
+  fontSize: 18,
+  letterSpacing: .4,
+};
+
+const ctaBtn: React.CSSProperties = {
+  background: "#f59e0b",
+  color: "#1b1b1b",
+  border: "none",
+  padding: "10px 14px",
+  borderRadius: 10,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const statRow: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 10,
+  marginBottom: 10,
+};
+
+const statBox: React.CSSProperties = {
+  background: "#0e172b",
+  border: "1px solid #1f2a44",
+  borderRadius: 10,
+  padding: 10,
+};
+
+const label: React.CSSProperties = {
+  display: "block",
+  fontSize: 12,
+  opacity: .75,
+  marginBottom: 2,
+};
+
+const value: React.CSSProperties = {
+  fontSize: 16,
+};
+
+const controlsRow: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr 1fr 1fr",
+  gap: 10,
+  marginBottom: 10,
+};
+
+const controlCol: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 6 };
+const smallLabel: React.CSSProperties = { fontSize: 12, opacity: .8 };
+
+const select: React.CSSProperties = {
+  background: "#0e172b",
+  color: "#e6eef8",
+  border: "1px solid #1f2a44",
+  borderRadius: 8,
+  padding: "8px 10px",
+};
+
+const input: React.CSSProperties = {
+  background: "#0e172b",
+  color: "#e6eef8",
+  border: "1px solid #1f2a44",
+  borderRadius: 8,
+  padding: "8px 10px",
+};
+
+const buttonsCol: React.CSSProperties = { display: "flex", gap: 8, alignItems: "end" };
+
+const buyBtn: React.CSSProperties = {
+  background: "#22c55e",
+  border: "none",
+  color: "#071017",
+  padding: "8px 10px",
+  borderRadius: 8,
+  cursor: "pointer",
+  fontWeight: 700,
+};
+const sellBtn: React.CSSProperties = {
+  ...buyBtn,
+  background: "#ef4444",
+};
+const resetBtn: React.CSSProperties = {
+  ...buyBtn,
+  background: "#475569",
+  color: "#e6eef8",
+};
+
+const positionBox: React.CSSProperties = {
+  background: "#0e172b",
+  border: "1px solid #1f2a44",
+  borderRadius: 10,
+  padding: 10,
+  marginBottom: 10,
+  fontSize: 14,
+};
+
+const fillsBox: React.CSSProperties = {
+  background: "#0e172b",
+  border: "1px solid #1f2a44",
+  borderRadius: 10,
+  padding: 10,
+};
+
+const fillsHead: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr 1fr 1fr",
+  opacity: .8,
+  fontSize: 12,
+  gap: 8,
+  borderBottom: "1px solid #1f2a44",
+  paddingBottom: 6,
+};
+
+const fillsRow: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr 1fr 1fr",
+  gap: 8,
+  padding: "8px 0",
+  borderBottom: "1px dashed #13223a",
+};
