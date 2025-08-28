@@ -13,14 +13,12 @@ export default function SimuladorPage() {
     typeof document !== 'undefined' ? !!document.fullscreenElement : false
   );
 
-  // observa mudanças de fullscreen
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', onChange);
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
 
-  // atalhos F (entrar) e X (sair)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
@@ -40,7 +38,6 @@ export default function SimuladorPage() {
 
   const PANEL_WIDTH = 360;
 
-  // estilos base
   const container: React.CSSProperties = {
     height: 'calc(100vh - 64px)',
     minHeight: 520,
@@ -61,7 +58,6 @@ export default function SimuladorPage() {
     overflow: 'hidden',
   };
 
-  // quando em fullscreen: ocupa TUDO (sem borda, sem radius, sem padding da página)
   const chartFullscreen: React.CSSProperties = isFullscreen
     ? {
         position: 'fixed',
@@ -84,13 +80,12 @@ export default function SimuladorPage() {
 
   return (
     <main style={{ padding: isFullscreen ? 0 : 8 }}>
-      {/* Topbar some no fullscreen */}
       {!isFullscreen && (
         <div className="rc-topbar">
-          <button className="rc-ghost" onClick={toggleSide}>
+          <button className="rc-ghost rc-ghost-blue" onClick={toggleSide}>
             Painel → {panelSide === 'left' ? 'direita' : 'esquerda'}
           </button>
-          <button className="rc-ghost" onClick={toggleVisible}>
+          <button className="rc-ghost rc-ghost-blue" onClick={toggleVisible}>
             {panelVisible ? 'Ocultar painel' : 'Mostrar painel'}
           </button>
           <button className="rc-ghost rc-ghost-strong" onClick={toggleFullscreen} title="Atalhos: F / X">
@@ -105,7 +100,6 @@ export default function SimuladorPage() {
           flexDirection: panelSide === 'left' ? 'row' : 'row-reverse',
         }}
       >
-        {/* painel só aparece fora do fullscreen */}
         {!isFullscreen && (
           <aside style={panelStyle}>
             <TradePanel />
@@ -113,7 +107,6 @@ export default function SimuladorPage() {
         )}
 
         <div style={{ ...chartShellBase, ...chartFullscreen }}>
-          {/* Botão flutuante F/X no gráfico */}
           <button
             className="rc-float"
             onClick={toggleFullscreen}
@@ -127,47 +120,38 @@ export default function SimuladorPage() {
       </section>
 
       <style>{`
-        .rc-topbar{
-          display:flex;align-items:center;gap:10px;padding:8px 10px
-        }
+        .rc-topbar{display:flex;align-items:center;gap:10px;padding:8px 10px}
         .rc-ghost{
           border:1px solid rgba(148,163,184,.35);
-          background:rgba(15,23,42,.75);
-          color:#e5e7eb;
           border-radius:12px;
           padding:10px 14px;
-          font-size:12px;
-          font-weight:800;
-          cursor:pointer;
+          font-size:12px;font-weight:800;cursor:pointer;
           transition:all .18s ease;
-          letter-spacing:.3px;
         }
-        .rc-ghost:hover{
-          transform:translateY(-1px);
-          box-shadow:0 10px 18px rgba(2,8,23,.35);
-          border-color:#60a5fa;color:#fff
+        /* botões azuis */
+        .rc-ghost-blue{
+          background:linear-gradient(180deg,#60a5fa,#3b82f6);
+          border-color:#60a5fa;color:#fff;
         }
-        /* botão de tela cheia mais chamativo */
+        .rc-ghost-blue:hover{
+          filter:saturate(1.2);
+          box-shadow:0 12px 22px rgba(59,130,246,.35);
+        }
+        /* botão tela cheia (já estava) */
         .rc-ghost-strong{
           background:linear-gradient(180deg,#60a5fa,#3b82f6);
           border-color:#60a5fa;color:#0b1220;
-          text-shadow:0 1px 0 rgba(255,255,255,.35)
+          font-weight:900;
         }
         .rc-ghost-strong:hover{
-          filter:saturate(1.15);box-shadow:0 12px 22px rgba(59,130,246,.35)
+          filter:saturate(1.15);box-shadow:0 12px 22px rgba(59,130,246,.45);
         }
-
         .rc-float{
           position:absolute;top:10px;right:10px;z-index:2;
           border:1px solid rgba(148,163,184,.45);
           background:linear-gradient(180deg,#1f2937,#0f172a);
           color:#e5e7eb;border-radius:12px;padding:10px 12px;
-          font-size:13px;font-weight:900;cursor:pointer;transition:all .18s ease;
-        }
-        .rc-float:hover{
-          transform:translateY(-1px);
-          box-shadow:0 12px 20px rgba(2,8,23,.45);
-          border-color:#60a5fa;color:#fff
+          font-size:13px;font-weight:900;cursor:pointer;
         }
       `}</style>
     </main>
