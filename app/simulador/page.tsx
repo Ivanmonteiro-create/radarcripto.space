@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import TradePanel from '../components/TradePanel';
 import TVChart from '../components/TVChart';
 
@@ -13,31 +13,26 @@ export default function SimuladorPage() {
     typeof document !== 'undefined' ? !!document.fullscreenElement : false
   );
 
-  // listeners para fullscreen (botão e atalhos F / X)
+  // sincroniza label do botão F/X
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', onChange);
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
 
+  // atalhos F (entrar) e X (sair)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'f' && !document.fullscreenElement) {
-        document.documentElement.requestFullscreen?.();
-      }
-      if (e.key.toLowerCase() === 'x' && document.fullscreenElement) {
-        document.exitFullscreen?.();
-      }
+      const k = e.key.toLowerCase();
+      if (k === 'f' && !document.fullscreenElement) document.documentElement.requestFullscreen?.();
+      if (k === 'x' && document.fullscreenElement) document.exitFullscreen?.();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const toggleSide = useCallback(
-    () => setPanelSide((s) => (s === 'left' ? 'right' : 'left')),
-    []
-  );
-  const toggleVisible = useCallback(() => setPanelVisible((v) => !v), []);
+  const toggleSide = useCallback(() => setPanelSide(s => (s === 'left' ? 'right' : 'left')), []);
+  const toggleVisible = useCallback(() => setPanelVisible(v => !v), []);
   const toggleFullscreen = useCallback(() => {
     if (document.fullscreenElement) document.exitFullscreen?.();
     else document.documentElement.requestFullscreen?.();
@@ -46,11 +41,11 @@ export default function SimuladorPage() {
   const PANEL_WIDTH = 360;
 
   const container: React.CSSProperties = {
-    height: 'calc(100vh - 64px)', // ocupa até o rodapé
+    height: 'calc(100vh - 64px)',
     minHeight: 520,
     display: 'flex',
-    gap: 10,
-    padding: 10,
+    gap: 12,
+    padding: 12,
     boxSizing: 'border-box',
   };
 
@@ -58,12 +53,11 @@ export default function SimuladorPage() {
     position: 'relative',
     flex: '1 1 auto',
     minWidth: 0,
-    borderRadius: 14,
-    background:
-      'linear-gradient(180deg, rgba(18, 24, 38, 0.9), rgba(15, 18, 28, 0.9))',
-    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: 16,
+    background: 'linear-gradient(180deg, #0f172a, #0b1222)',
+    border: '1px solid rgba(148,163,184,0.18)',
     boxShadow:
-      '0 12px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,0.04)',
+      '0 14px 36px rgba(2,8,23,.55), inset 0 1px 0 rgba(255,255,255,.04)',
     overflow: 'hidden',
   };
 
@@ -74,33 +68,17 @@ export default function SimuladorPage() {
     flex: '0 0 auto',
   };
 
-  const controlBar: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '6px 10px',
-  };
-
-  const ghostBtn: React.CSSProperties = {
-    border: '1px solid rgba(255,255,255,.12)',
-    background: 'rgba(255,255,255,.06)',
-    borderRadius: 10,
-    padding: '8px 12px',
-    fontSize: 12,
-    cursor: 'pointer',
-  };
-
   return (
     <main style={{ padding: 8 }}>
-      {/* barra superior – mantém sua lógica, só deixei mais clean */}
-      <div style={controlBar}>
-        <button style={ghostBtn} onClick={toggleSide}>
+      {/* Barra de controles */}
+      <div className="rc-topbar">
+        <button className="rc-ghost" onClick={toggleSide}>
           Painel → {panelSide === 'left' ? 'direita' : 'esquerda'}
         </button>
-        <button style={ghostBtn} onClick={toggleVisible}>
+        <button className="rc-ghost" onClick={toggleVisible}>
           {panelVisible ? 'Ocultar painel' : 'Mostrar painel'}
         </button>
-        <button style={ghostBtn} onClick={toggleFullscreen} title="Atalho: F/X">
+        <button className="rc-ghost" onClick={toggleFullscreen} title="Atalhos: F (entrar) / X (sair)">
           {isFullscreen ? 'X' : 'F'} Tela cheia
         </button>
       </div>
@@ -116,30 +94,45 @@ export default function SimuladorPage() {
         </aside>
 
         <div style={chartShell}>
-          {/* botão flutuante no canto do gráfico (mesma ação de tela cheia) */}
+          {/* Botão flutuante F/X no gráfico */}
           <button
+            className="rc-float"
             onClick={toggleFullscreen}
             title="Tela cheia (F) / Sair (X)"
-            style={{
-              position: 'absolute',
-              top: 10,
-              right: 10,
-              zIndex: 2,
-              border: '1px solid rgba(255,255,255,.15)',
-              background: 'rgba(18, 22, 30, .9)',
-              borderRadius: 10,
-              padding: '8px 10px',
-              fontSize: 12,
-              cursor: 'pointer',
-            }}
           >
             {isFullscreen ? 'X' : 'F'}
           </button>
 
-          {/* TVChart preenche 100% */}
           <TVChart />
         </div>
       </section>
+
+      {/* estilos do layout / botões da page */}
+      <style>{`
+        .rc-topbar{
+          display:flex;align-items:center;gap:10px;padding:8px 10px
+        }
+        .rc-ghost{
+          border:1px solid rgba(148,163,184,.35);
+          background:rgba(15,23,42,.6);
+          color:#e5e7eb;
+          border-radius:12px;
+          padding:8px 12px;
+          font-size:12px;
+          font-weight:600;
+          cursor:pointer;
+          transition:all .18s ease;
+        }
+        .rc-ghost:hover{transform:translateY(-1px);box-shadow:0 10px 18px rgba(2,8,23,.35);border-color:#60a5fa;color:#fff}
+        .rc-float{
+          position:absolute;top:10px;right:10px;z-index:2;
+          border:1px solid rgba(148,163,184,.35);
+          background:rgba(15,23,42,.85);
+          color:#e5e7eb;border-radius:12px;padding:8px 10px;
+          font-size:12px;font-weight:700;cursor:pointer;transition:all .18s ease;
+        }
+        .rc-float:hover{transform:translateY(-1px);box-shadow:0 10px 18px rgba(2,8,23,.45);border-color:#60a5fa;color:#fff}
+      `}</style>
     </main>
   );
 }
