@@ -150,7 +150,44 @@ const btnCol: React.CSSProperties = { display: 'grid', gap: 8, marginTop: 12 };
               style={btnPlan}
             >
               Assinar Trader Pro
-            </a>
+              <div style={btnCol}>
+  <a
+    href="/api/checkout?plan=pro&currency=BRL&provider=stripe&method=pix"
+    style={payBtn}
+  >
+    Pagar com PIX (BRL)
+  </a>
+
+  <a
+    href="/api/checkout?plan=pro&currency=BRL&provider=stripe&method=card"
+    style={payBtnAlt}
+  >
+    Cartão (BRL)
+  </a>
+
+  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+    <a
+      href="/api/checkout?plan=pro&currency=USD&provider=stripe&method=card"
+      style={payBtn}
+    >
+      Cartão (USD)
+    </a>
+    <a
+      href="/api/checkout?plan=pro&currency=EUR&provider=stripe&method=card"
+      style={payBtn}
+    >
+      Cartão (EUR)
+    </a>
+  </div>
+
+  <a
+    href="/api/checkout?plan=pro&currency=USD&provider=coinbase"
+    style={payBtn}
+  >
+    Cripto (USD)
+  </a>
+</div>
+            </a> 
           </article>
 
           {/* Master */}
@@ -173,6 +210,43 @@ const btnCol: React.CSSProperties = { display: 'grid', gap: 8, marginTop: 12 };
               style={btnPlan}
             >
               Assinar Master
+              <div style={btnCol}>
+  <a
+    href="/api/checkout?plan=master&currency=BRL&provider=stripe&method=pix"
+    style={payBtn}
+  >
+    Pagar com PIX (BRL)
+  </a>
+
+  <a
+    href="/api/checkout?plan=master&currency=BRL&provider=stripe&method=card"
+    style={payBtnAlt}
+  >
+    Cartão (BRL)
+  </a>
+
+  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+    <a
+      href="/api/checkout?plan=master&currency=USD&provider=stripe&method=card"
+      style={payBtn}
+    >
+      Cartão (USD)
+    </a>
+    <a
+      href="/api/checkout?plan=master&currency=EUR&provider=stripe&method=card"
+      style={payBtn}
+    >
+      Cartão (EUR)
+    </a>
+  </div>
+
+  <a
+    href="/api/checkout?plan=master&currency=USD&provider=coinbase"
+    style={payBtn}
+  >
+    Cripto (USD)
+  </a>
+</div>
             </a>
           </article>
         </section>
