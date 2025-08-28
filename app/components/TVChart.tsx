@@ -1,67 +1,79 @@
-"use client";
+'use client';
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from 'react';
 
-type Props = {
-  /** Ex: "BINANCE:BTCUSDT" */
-  symbol: string;
-  /** Ex: "1", "30", "60", "240", "D" */
-  interval: "1" | "30" | "60" | "240" | "D";
-};
-
-export default function TVChart({ symbol, interval }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
+/**
+ * Componente de gráfico via TradingView (iframe)
+ * - Altura 100% do contêiner
+ * - Resize automático quando o contêiner muda (ResizeObserver)
+ * - Tenta reenviar postMessage de resize para o iframe (melhora “canvas cortado”)
+ */
+export default function TVChart() {
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    if (!wrapperRef.current) return;
 
-    // limpa qualquer embed anterior
-    container.innerHTML = "";
-
-    // cria o script oficial do TradingView
-    const script = document.createElement("script");
-    script.src =
-      "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
-    script.type = "text/javascript";
-    script.async = true;
-
-    // configuração oficial (JSON em string no innerHTML)
-    script.innerHTML = JSON.stringify({
-      autosize: true,
-      symbol, // ex: "BINANCE:BTCUSDT"
-      interval, // "1"|"30"|"60"|"240"|"D"
-      timezone: "Etc/UTC",
-      theme: "dark",
-      style: "1",
-      locale: "br",
-      enable_publishing: false,
-      backgroundColor: "rgba(15, 23, 42, 0.65)",
-      hide_top_toolbar: false,
-      hide_legend: false,
-      allow_symbol_change: true,
-      studies: ["Volume@tv-basicstudies"],
-      save_image: true,
-      support_host: "https://www.tradingview.com",
-    });
-
-    container.appendChild(script);
-
-    // cleanup
-    return () => {
-      container.innerHTML = "";
+    const resize = () => {
+      const el = wrapperRef.current!;
+      const iframe = iframeRef.current;
+      // força o iframe a ocupar 100% do espaço
+      if (iframe) {
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        // alguns temas do TV reagem a este postMessage
+        try {
+          iframe.contentWindow?.postMessage(
+            { type: 'resize', width: el.clientWidth, height: el.clientHeight },
+            '*'
+          );
+        } catch {
+          // silencioso
+        }
+      }
     };
-  }, [symbol, interval]);
+
+    const ro = new ResizeObserver(resize);
+    ro.observe(wrapperRef.current);
+
+    // 2 chutes extras após montar (corrige canvas que fica “pequeno”)
+    const t1 = setTimeout(resize, 60);
+    const t2 = setTimeout(resize, 300);
+
+    return () => {
+      ro.disconnect();
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, []);
+
+  // altura total – o contêiner pai já tem height 100%
+  const wrapStyle: React.CSSProperties = {
+    position: 'absolute',
+    inset: 0,
+  };
+
+  // URL do widget oficial (pode trocar símbolo/tema depois)
+  const src =
+    'https://s.tradingview.com/widgetembed/?symbol=BINANCE:BTCUSDT&interval=60&hidesidetoolbar=0&hidetoptoolbar=0&symboledit=1&saveimage=1&toolbarbg=rgba(0,0,0,0)&studies=[]&theme=dark&style=1&timezone=Etc/UTC&withdateranges=1&allow_symbol_change=1';
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        position: "absolute",
-        inset: 0,
-        width: "100%",
-        height: "100%",
-      }}
-    />
+    <div ref={wrapperRef} style={wrapStyle}>
+      <iframe
+        ref={iframeRef}
+        title="TradingView"
+        src={src}
+        style={{
+          width: '100%',
+          height: '100%',
+          border: 0,
+          display: 'block',
+        }}
+        allowFullScreen
+        loading="eager"
+        referrerPolicy="no-referrer-when-downgrade"
+      />
+    </div>
   );
 }
