@@ -1,121 +1,111 @@
-/* app/globals.css */
+/* ===========================
+   RadarCripto.space — base
+   =========================== */
 
-/* reset leve + altura total */
-:root, html, body {
-  height: 100%;
-}
-* { box-sizing: border-box; }
-html, body {
-  margin: 0;
-  padding: 0;
-  background: #0f1220;   /* fundo escuro do app */
-  color: #e6eef6;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
-}
+:root{
+  --blue-500:#1f6feb;
+  --blue-600:#1a5fd0;
+  --blue-700:#1349a5;
+  --green-500:#16a34a;
+  --green-600:#128c3f;
+  --red-500:#ef4444;
+  --red-600:#d63b3b;
 
-/* utilitários rápidos (iguais aos que já usamos) */
-.container { max-width: 1200px; margin-inline: auto; }
-.card { background: #151a21; border: 1px solid rgba(255,255,255,.06); border-radius: 12px; }
-.row { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
-.col { flex:1 1 0; min-width: 260px; }
-.badge { background:#1f2937; border:1px solid rgba(255,255,255,.06); color:#9cc2ff; border-radius:10px; padding:2px 8px; font-size:12px; }
-.btn { border:0; border-radius:10px; padding:8px 12px; cursor:pointer; font-weight:600; }
-.btn-green { background:#16a34a; color:white; }
-.btn-red { background:#dc2626; color:white; }
-.btn-gray { background:#334155; color:#e6eef6; }
-:root {
-  --blue-600: #1677ff;
-  --blue-700: #0f5ed6;
-  --blue-800: #0b49a8;
+  --panel-grad-start:#0b1220;
+  --panel-grad-end:#0f172a;
 
-  --green-600: #22c55e;
-  --green-700: #16a34a;
+  --text:#e5e7eb;
+  --muted:#9ca3af;
 
-  --red-600: #ef4444;
-  --red-700: #dc2626;
-
-  --card-bg: rgba(15, 23, 42, 0.72);         /* slate-900 com transparência */
-  --card-stroke: rgba(148, 163, 184, 0.12);  /* slate-400 bem suave */
+  --glow-blue: 0 0 12px rgba(31,111,235,.45);
+  --glow-green:0 0 12px rgba(22,163,74,.35);
+  --glow-red:  0 0 12px rgba(239,68,68,.35);
 }
 
-/* -------- painéis/“cards” -------- */
-.card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-stroke);
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.4);
-  backdrop-filter: blur(4px);
+html,body{ height:100%; background:#0a0f1c; color:var(--text); }
+*{ box-sizing:border-box; }
+
+/* utilidades */
+.container-sim{
+  display:flex; gap:16px;
+  height:calc(100vh - 64px); /* cabeçalho/toolbar que já existe */
+  padding:12px 12px 16px;
 }
 
-/* gradiente sutil no painel de trade */
-.panel-gradient {
-  background: linear-gradient(180deg, rgba(15,23,42,.82) 0%, rgba(15,23,42,.72) 60%, rgba(15,23,42,.6) 100%);
+.chartBox{
+  position:relative;
+  flex:1 1 auto;
+  min-width:0;
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:12px;
+  background:#0b0f1a;
+  overflow:hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35) inset, 0 10px 30px rgba(0,0,0,.25);
 }
 
-/* -------- botões padrão azul (padronização) -------- */
-.btn-primary {
-  appearance: none;
-  border: none;
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-weight: 600;
-  color: #fff;
-  background: linear-gradient(180deg, var(--blue-600), var(--blue-700));
-  box-shadow: 0 6px 18px rgba(22, 119, 255, .35);
-  cursor: pointer;
-  transition: transform .06s ease, box-shadow .2s ease, filter .2s ease;
-}
-.btn-primary:hover { filter: brightness(1.06); box-shadow: 0 8px 22px rgba(22,119,255,.45); }
-.btn-primary:active { transform: translateY(1px) scale(.99); }
-
-/* -------- botões Buy/Sell/Reset (cores fortes) -------- */
-.btn-buy, .btn-sell, .btn-reset {
-  appearance: none;
-  border: none;
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-weight: 700;
-  color: #0b1220;
-  cursor: pointer;
-  transition: transform .06s ease, filter .15s ease, box-shadow .2s ease;
-}
-.btn-buy  { background: linear-gradient(180deg, var(--green-600), var(--green-700)); color:#03210d; box-shadow: 0 6px 16px rgba(34,197,94,.35); }
-.btn-sell { background: linear-gradient(180deg, var(--red-600), var(--red-700)); color:#1b0707; box-shadow: 0 6px 16px rgba(239,68,68,.35); }
-.btn-reset{ background: linear-gradient(180deg, #e5e7eb, #cbd5e1); color:#0f172a; box-shadow: 0 6px 16px rgba(148,163,184,.25); }
-
-.btn-buy:hover  { filter: brightness(1.05); box-shadow: 0 8px 22px rgba(34,197,94,.45); }
-.btn-sell:hover { filter: brightness(1.05); box-shadow: 0 8px 22px rgba(239,68,68,.45); }
-.btn-reset:hover{ filter: brightness(1.03); }
-
-.btn-buy:active, .btn-sell:active, .btn-reset:active { transform: translateY(1px) scale(.99); }
-
-/* botão “Comprar Plano” chamativo */
-.btn-plan {
-  background: linear-gradient(180deg, #ffd54d, #f59e0b);
-  color:#231b00;
-  border-radius: 12px;
-  padding: 12px 16px;
-  font-weight: 800;
-  box-shadow: 0 10px 26px rgba(245, 158, 11, .45);
-  animation: pulseShadow 2.2s infinite ease-in-out;
-  border: none;
-  cursor: pointer;
-}
-.btn-plan:hover { filter: brightness(1.04); }
-@keyframes pulseShadow {
-  0%, 100% { box-shadow: 0 10px 26px rgba(245,158,11,.45) }
-  50%      { box-shadow: 0 12px 34px rgba(245,158,11,.6) }
+/* fullscreen do chart */
+.chartBox--full{
+  position:fixed !important;
+  inset:0 !important;
+  width:100vw !important;
+  height:100vh !important;
+  z-index:60 !important;
+  border-radius:0 !important;
 }
 
-/* container do gráfico ocupando o máximo vertical */
-.chart-stretch {
-  height: calc(100vh - 82px); /* mantém seus botões superiores; ajuste se precisar */
+/* botões – base */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:.55rem .9rem; border-radius:.6rem; font-weight:600;
+  border:1px solid transparent; cursor:pointer; user-select:none;
+  transition:transform .08s ease, box-shadow .15s ease, background .2s ease, border-color .2s ease;
+  white-space:nowrap;
 }
 
-/* barra de indicadores visível, quando existir */
-.tv-right-toolbar--visible { opacity: 1 !important; }
+/* azuis padronizados (painel ←/→, ocultar, tela cheia) */
+.btn-blue{
+  background:linear-gradient(180deg, var(--blue-500), var(--blue-600));
+  border-color:var(--blue-700); color:#fff;
+}
+.btn-blue:hover{ box-shadow:var(--glow-blue); transform:translateY(-1px); }
 
-/* área dos três botões flutuantes (direita/esquerda, ocultar, tela cheia) */
-.top-actions {
-  display: flex; gap: 8px; align-items: center;
+/* CTA amarelo (Comprar Plano) */
+.btn-plan{
+  background:linear-gradient(180deg, #fbbf24, #f59e0b);
+  border-color:#b45309; color:#111; font-weight:800;
+}
+.btn-plan:hover{ box-shadow:0 0 12px rgba(245,158,11,.45); transform:translateY(-1px); }
+
+/* Buy/Sell/Reset visuais */
+.btn-buy{  background:linear-gradient(180deg, var(--green-500), var(--green-600)); color:#fff; }
+.btn-sell{ background:linear-gradient(180deg, var(--red-500),   var(--red-600));   color:#fff; }
+.btn-reset{background:#e5e7eb; color:#111; }
+.btn-buy:hover{  box-shadow:var(--glow-green); transform:translateY(-1px); }
+.btn-sell:hover{ box-shadow:var(--glow-red);   transform:translateY(-1px); }
+
+/* painel do trader “vidrado” */
+.trade-panel{
+  background:linear-gradient(180deg, var(--panel-grad-start), var(--panel-grad-end));
+  border:1px solid rgba(255,255,255,.06);
+  box-shadow: 0 8px 24px rgba(0,0,0,.35) inset, 0 10px 30px rgba(0,0,0,.25);
+  border-radius:12px;
+  padding:12px;
+  width:360px;
+  min-width:320px;
+}
+
+/* barra de ações do topo (onde ficam os botões azuis) */
+.toolbar{
+  display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+  margin:8px 12px;
+}
+
+/* iframe de gráfico deve ocupar 100% do box */
+.chartBox iframe{
+  position:absolute; inset:0; width:100%; height:100%; border:0;
+}
+
+/* botão sair do fullscreen */
+.btn-exit{
+  position:fixed; top:12px; right:12px; z-index:70;
 }
