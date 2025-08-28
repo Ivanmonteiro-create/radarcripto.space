@@ -88,7 +88,7 @@ export default function SimuladorPage() {
           <button className="rc-ghost rc-ghost-blue" onClick={toggleVisible}>
             {panelVisible ? 'Ocultar painel' : 'Mostrar painel'}
           </button>
-          <button className="rc-ghost rc-ghost-strong" onClick={toggleFullscreen} title="Atalhos: F / X">
+          <button className="rc-ghost rc-ghost-blue" onClick={toggleFullscreen} title="Atalhos: F / X">
             F Tela cheia
           </button>
         </div>
@@ -107,6 +107,7 @@ export default function SimuladorPage() {
         )}
 
         <div style={{ ...chartShellBase, ...chartFullscreen }}>
+          {/* botão flutuante continua igual */}
           <button
             className="rc-float"
             onClick={toggleFullscreen}
@@ -115,6 +116,7 @@ export default function SimuladorPage() {
             {isFullscreen ? 'X' : 'F'}
           </button>
 
+          {/* gráfico com painel de indicadores interno */}
           <TVChart />
         </div>
       </section>
@@ -128,23 +130,14 @@ export default function SimuladorPage() {
           font-size:12px;font-weight:800;cursor:pointer;
           transition:all .18s ease;
         }
-        /* botões azuis */
+        /* TODOS os 3 botões no MESMO azul */
         .rc-ghost-blue{
           background:linear-gradient(180deg,#60a5fa,#3b82f6);
-          border-color:#60a5fa;color:#fff;
+          border-color:#60a5fa;color:white;
         }
         .rc-ghost-blue:hover{
-          filter:saturate(1.2);
-          box-shadow:0 12px 22px rgba(59,130,246,.35);
-        }
-        /* botão tela cheia (já estava) */
-        .rc-ghost-strong{
-          background:linear-gradient(180deg,#60a5fa,#3b82f6);
-          border-color:#60a5fa;color:#0b1220;
-          font-weight:900;
-        }
-        .rc-ghost-strong:hover{
-          filter:saturate(1.15);box-shadow:0 12px 22px rgba(59,130,246,.45);
+          filter:saturate(1.15);
+          box-shadow:0 12px 22px rgba(59,130,246,.40);
         }
         .rc-float{
           position:absolute;top:10px;right:10px;z-index:2;
