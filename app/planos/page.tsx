@@ -4,6 +4,25 @@ import React from 'react';
 import Link from 'next/link';
 
 export default function PlanosPage() {
+// --- estilos locais para os botões de pagamento (não altera nada do resto) ---
+const payBtn: React.CSSProperties = {
+  display: 'inline-block',
+  padding: '10px 14px',
+  borderRadius: 10,
+  fontWeight: 700,
+  textDecoration: 'none',
+  textAlign: 'center',
+  background: '#2563eb', // azul base (igual ao Full Screen)
+  color: '#ffffff',
+  boxShadow: '0 4px 12px rgba(37,99,235,.35)',
+  border: '1px solid rgba(255,255,255,.08)',
+};
+const payBtnAlt: React.CSSProperties = {
+  ...payBtn,
+  background: '#0ea5e9', // azul claro de apoio
+};
+const btnCol: React.CSSProperties = { display: 'grid', gap: 8, marginTop: 12 };
+// ---------------------------------------------------------------------------
   // ajuste rápido de cores que combinam com o app
   const c = {
     bg:    '#0a0f1c',
