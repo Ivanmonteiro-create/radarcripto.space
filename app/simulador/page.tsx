@@ -1,152 +1,62 @@
 'use client';
-
-import React, { useCallback, useEffect, useState } from 'react';
+import React from 'react';
 import TradePanel from '../components/TradePanel';
-import TVChart from '../components/TVChart';
 
-type PanelSide = 'left' | 'right';
+export default function SimuladorPage(){
+  // estado do layout
+  const [painelPos, setPainelPos] = React.useState<'left'|'right'>('left');
+  const [painelVisivel, setPainelVisivel] = React.useState(true);
+  const [isFullscreen, setIsFullscreen]   = React.useState(false);
 
-export default function SimuladorPage() {
-  const [panelSide, setPanelSide] = useState<PanelSide>('left');
-  const [panelVisible, setPanelVisible] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(
-    typeof document !== 'undefined' ? !!document.fullscreenElement : false
+  // seletores simples (não mexe no seu embed, apenas exemplo)
+  const [exchange]   = React.useState('BINANCE');
+  const [pair]       = React.useState('BTCUSDT');
+  const [timeframe]  = React.useState('1h');
+
+  // handlers dos botões azuis
+  const moverPainelEsquerda = () => setPainelPos('left');
+  const moverPainelDireita  = () => setPainelPos('right');
+  const togglePainel        = () => setPainelVisivel(v => !v);
+  const toggleFullscreen    = () => setIsFullscreen(f => !f);
+
+  // URL do TradingView (usa o seu embed público)
+  // Mantém os indicadores à vista (depende do próprio widget).
+  const tvSrc = `https://s.tradingview.com/widgetembed/?symbol=${pair}&interval=${timeframe}&exchange=${exchange}&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Etc%2FUTC&withdateranges=1&hideideas=1`;
+
+  // ordem dos elementos conforme posição do painel
+  const leftCol = painelVisivel ? <TradePanel /> : null;
+
+  const chartEl = (
+    <div className={isFullscreen ? 'chartBox chartBox--full' : 'chartBox'}>
+      <iframe title="TradingView"
+              src={tvSrc}
+              allowTransparency
+              referrerPolicy="no-referrer-when-downgrade" />
+      {isFullscreen && (
+        <button className="btn btn-blue btn-exit" onClick={toggleFullscreen}>Sair</button>
+      )}
+    </div>
   );
 
-  useEffect(() => {
-    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', onChange);
-    return () => document.removeEventListener('fullscreenchange', onChange);
-  }, []);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
-      if (k === 'f' && !document.fullscreenElement) document.documentElement.requestFullscreen?.();
-      if (k === 'x' && document.fullscreenElement) document.exitFullscreen?.();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
-  const toggleSide = useCallback(() => setPanelSide(s => (s === 'left' ? 'right' : 'left')), []);
-  const toggleVisible = useCallback(() => setPanelVisible(v => !v), []);
-  const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) document.exitFullscreen?.();
-    else document.documentElement.requestFullscreen?.();
-  }, []);
-
-  const PANEL_WIDTH = 360;
-
-  const container: React.CSSProperties = {
-    height: 'calc(100vh - 64px)',
-    minHeight: 520,
-    display: 'flex',
-    gap: 12,
-    padding: 12,
-    boxSizing: 'border-box',
-  };
-
-  const chartShellBase: React.CSSProperties = {
-    position: 'relative',
-    flex: '1 1 auto',
-    minWidth: 0,
-    borderRadius: 16,
-    background: 'linear-gradient(180deg, #0f172a, #0b1222)',
-    border: '1px solid rgba(148,163,184,0.18)',
-    boxShadow: '0 14px 36px rgba(2,8,23,.55), inset 0 1px 0 rgba(255,255,255,.04)',
-    overflow: 'hidden',
-  };
-
-  const chartFullscreen: React.CSSProperties = isFullscreen
-    ? {
-        position: 'fixed',
-        inset: 0,
-        width: '100vw',
-        height: '100vh',
-        borderRadius: 0,
-        border: 'none',
-        boxShadow: 'none',
-        zIndex: 50,
-      }
-    : {};
-
-  const panelStyle: React.CSSProperties = {
-    width: panelVisible && !isFullscreen ? PANEL_WIDTH : 0,
-    transition: 'width .25s ease',
-    overflow: 'hidden',
-    flex: '0 0 auto',
-  };
-
   return (
-    <main style={{ padding: isFullscreen ? 0 : 8 }}>
-      {!isFullscreen && (
-        <div className="rc-topbar">
-          <button className="rc-ghost rc-ghost-blue" onClick={toggleSide}>
-            Painel → {panelSide === 'left' ? 'direita' : 'esquerda'}
-          </button>
-          <button className="rc-ghost rc-ghost-blue" onClick={toggleVisible}>
-            {panelVisible ? 'Ocultar painel' : 'Mostrar painel'}
-          </button>
-          <button className="rc-ghost rc-ghost-blue" onClick={toggleFullscreen} title="Atalhos: F / X">
-            F Tela cheia
-          </button>
-        </div>
-      )}
+    <main>
+      {/* barra superior com botões azuis padronizados */}
+      <div className="toolbar">
+        <button className="btn btn-blue" onClick={moverPainelEsquerda}>Painel ← esquerda</button>
+        <button className="btn btn-blue" onClick={moverPainelDireita}>Painel → direita</button>
+        <button className="btn btn-blue" onClick={togglePainel}>
+          {painelVisivel ? 'Ocultar painel' : 'Mostrar painel'}
+        </button>
+        <button className="btn btn-blue" onClick={toggleFullscreen}>
+          {isFullscreen ? 'Sair' : 'Tela cheia'}
+        </button>
+      </div>
 
-      <section
-        style={{
-          ...(isFullscreen ? { height: 0, padding: 0 } : container),
-          flexDirection: panelSide === 'left' ? 'row' : 'row-reverse',
-        }}
-      >
-        {!isFullscreen && (
-          <aside style={panelStyle}>
-            <TradePanel />
-          </aside>
-        )}
-
-        <div style={{ ...chartShellBase, ...chartFullscreen }}>
-          {/* botão flutuante continua igual */}
-          <button
-            className="rc-float"
-            onClick={toggleFullscreen}
-            title="Tela cheia (F) / Sair (X)"
-          >
-            {isFullscreen ? 'X' : 'F'}
-          </button>
-
-          {/* gráfico com painel de indicadores interno */}
-          <TVChart />
-        </div>
+      {/* layout 2 colunas */}
+      <section className="container-sim" style={{flexDirection: painelPos === 'left' ? 'row' : 'row-reverse'}}>
+        {leftCol}
+        {chartEl}
       </section>
-
-      <style>{`
-        .rc-topbar{display:flex;align-items:center;gap:10px;padding:8px 10px}
-        .rc-ghost{
-          border:1px solid rgba(148,163,184,.35);
-          border-radius:12px;
-          padding:10px 14px;
-          font-size:12px;font-weight:800;cursor:pointer;
-          transition:all .18s ease;
-        }
-        /* TODOS os 3 botões no MESMO azul */
-        .rc-ghost-blue{
-          background:linear-gradient(180deg,#60a5fa,#3b82f6);
-          border-color:#60a5fa;color:white;
-        }
-        .rc-ghost-blue:hover{
-          filter:saturate(1.15);
-          box-shadow:0 12px 22px rgba(59,130,246,.40);
-        }
-        .rc-float{
-          position:absolute;top:10px;right:10px;z-index:2;
-          border:1px solid rgba(148,163,184,.45);
-          background:linear-gradient(180deg,#1f2937,#0f172a);
-          color:#e5e7eb;border-radius:12px;padding:10px 12px;
-          font-size:13px;font-weight:900;cursor:pointer;
-        }
-      `}</style>
     </main>
   );
 }
