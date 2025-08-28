@@ -13,7 +13,7 @@ export default function SimuladorPage() {
     typeof document !== 'undefined' ? !!document.fullscreenElement : false
   );
 
-  // sincroniza label do botão F/X
+  // observa mudanças de fullscreen
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', onChange);
@@ -40,6 +40,7 @@ export default function SimuladorPage() {
 
   const PANEL_WIDTH = 360;
 
+  // estilos base
   const container: React.CSSProperties = {
     height: 'calc(100vh - 64px)',
     minHeight: 520,
@@ -49,51 +50,69 @@ export default function SimuladorPage() {
     boxSizing: 'border-box',
   };
 
-  const chartShell: React.CSSProperties = {
+  const chartShellBase: React.CSSProperties = {
     position: 'relative',
     flex: '1 1 auto',
     minWidth: 0,
     borderRadius: 16,
     background: 'linear-gradient(180deg, #0f172a, #0b1222)',
     border: '1px solid rgba(148,163,184,0.18)',
-    boxShadow:
-      '0 14px 36px rgba(2,8,23,.55), inset 0 1px 0 rgba(255,255,255,.04)',
+    boxShadow: '0 14px 36px rgba(2,8,23,.55), inset 0 1px 0 rgba(255,255,255,.04)',
     overflow: 'hidden',
   };
 
+  // quando em fullscreen: ocupa TUDO (sem borda, sem radius, sem padding da página)
+  const chartFullscreen: React.CSSProperties = isFullscreen
+    ? {
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100vh',
+        borderRadius: 0,
+        border: 'none',
+        boxShadow: 'none',
+        zIndex: 50,
+      }
+    : {};
+
   const panelStyle: React.CSSProperties = {
-    width: panelVisible ? PANEL_WIDTH : 0,
+    width: panelVisible && !isFullscreen ? PANEL_WIDTH : 0,
     transition: 'width .25s ease',
     overflow: 'hidden',
     flex: '0 0 auto',
   };
 
   return (
-    <main style={{ padding: 8 }}>
-      {/* Barra de controles */}
-      <div className="rc-topbar">
-        <button className="rc-ghost" onClick={toggleSide}>
-          Painel → {panelSide === 'left' ? 'direita' : 'esquerda'}
-        </button>
-        <button className="rc-ghost" onClick={toggleVisible}>
-          {panelVisible ? 'Ocultar painel' : 'Mostrar painel'}
-        </button>
-        <button className="rc-ghost" onClick={toggleFullscreen} title="Atalhos: F (entrar) / X (sair)">
-          {isFullscreen ? 'X' : 'F'} Tela cheia
-        </button>
-      </div>
+    <main style={{ padding: isFullscreen ? 0 : 8 }}>
+      {/* Topbar some no fullscreen */}
+      {!isFullscreen && (
+        <div className="rc-topbar">
+          <button className="rc-ghost" onClick={toggleSide}>
+            Painel → {panelSide === 'left' ? 'direita' : 'esquerda'}
+          </button>
+          <button className="rc-ghost" onClick={toggleVisible}>
+            {panelVisible ? 'Ocultar painel' : 'Mostrar painel'}
+          </button>
+          <button className="rc-ghost rc-ghost-strong" onClick={toggleFullscreen} title="Atalhos: F / X">
+            F Tela cheia
+          </button>
+        </div>
+      )}
 
       <section
         style={{
-          ...container,
+          ...(isFullscreen ? { height: 0, padding: 0 } : container),
           flexDirection: panelSide === 'left' ? 'row' : 'row-reverse',
         }}
       >
-        <aside style={panelStyle}>
-          <TradePanel />
-        </aside>
+        {/* painel só aparece fora do fullscreen */}
+        {!isFullscreen && (
+          <aside style={panelStyle}>
+            <TradePanel />
+          </aside>
+        )}
 
-        <div style={chartShell}>
+        <div style={{ ...chartShellBase, ...chartFullscreen }}>
           {/* Botão flutuante F/X no gráfico */}
           <button
             className="rc-float"
@@ -107,31 +126,49 @@ export default function SimuladorPage() {
         </div>
       </section>
 
-      {/* estilos do layout / botões da page */}
       <style>{`
         .rc-topbar{
           display:flex;align-items:center;gap:10px;padding:8px 10px
         }
         .rc-ghost{
           border:1px solid rgba(148,163,184,.35);
-          background:rgba(15,23,42,.6);
+          background:rgba(15,23,42,.75);
           color:#e5e7eb;
           border-radius:12px;
-          padding:8px 12px;
+          padding:10px 14px;
           font-size:12px;
-          font-weight:600;
+          font-weight:800;
           cursor:pointer;
           transition:all .18s ease;
+          letter-spacing:.3px;
         }
-        .rc-ghost:hover{transform:translateY(-1px);box-shadow:0 10px 18px rgba(2,8,23,.35);border-color:#60a5fa;color:#fff}
+        .rc-ghost:hover{
+          transform:translateY(-1px);
+          box-shadow:0 10px 18px rgba(2,8,23,.35);
+          border-color:#60a5fa;color:#fff
+        }
+        /* botão de tela cheia mais chamativo */
+        .rc-ghost-strong{
+          background:linear-gradient(180deg,#60a5fa,#3b82f6);
+          border-color:#60a5fa;color:#0b1220;
+          text-shadow:0 1px 0 rgba(255,255,255,.35)
+        }
+        .rc-ghost-strong:hover{
+          filter:saturate(1.15);box-shadow:0 12px 22px rgba(59,130,246,.35)
+        }
+
         .rc-float{
           position:absolute;top:10px;right:10px;z-index:2;
-          border:1px solid rgba(148,163,184,.35);
-          background:rgba(15,23,42,.85);
-          color:#e5e7eb;border-radius:12px;padding:8px 10px;
-          font-size:12px;font-weight:700;cursor:pointer;transition:all .18s ease;
+          border:1px solid rgba(148,163,184,.45);
+          background:linear-gradient(180deg,#1f2937,#0f172a);
+          color:#e5e7eb;border-radius:12px;padding:10px 12px;
+          font-size:13px;font-weight:900;cursor:pointer;transition:all .18s ease;
         }
-        .rc-float:hover{transform:translateY(-1px);box-shadow:0 10px 18px rgba(2,8,23,.45);border-color:#60a5fa;color:#fff}
+        .rc-float:hover{
+          transform:translateY(-1px);
+          box-shadow:0 12px 20px rgba(2,8,23,.45);
+          border-color:#60a5fa;color:#fff
+        }
       `}</style>
     </main>
   );
