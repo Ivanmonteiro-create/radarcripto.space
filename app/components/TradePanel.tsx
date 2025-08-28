@@ -9,13 +9,11 @@ export default function TradePanel() {
         <h2>Painel de Trade</h2>
       </div>
 
-      {/* Saldo / Lucro */}
       <div className="rc-grid2">
         <Stat title="Créditos" value="US$ 100 000" />
         <Stat title="Lucro Realizado" value="US$ 0.00" accent />
       </div>
 
-      {/* Controles principais */}
       <div className="rc-block">
         <label className="rc-label">Lado</label>
         <select className="rc-input" defaultValue="BUY (Long)" aria-label="Lado">
@@ -36,20 +34,17 @@ export default function TradePanel() {
         </div>
       </div>
 
-      {/* Posição / PnL */}
       <div className="rc-card">
         <div className="rc-label">Posição</div>
         <div className="rc-muted">Lote 0 | Preço Médio: —</div>
         <div className="rc-pnl">PNL não realizado (mark=10 000): US$ 0.00</div>
       </div>
 
-      {/* Fills (placeholder) */}
       <div className="rc-card rc-flex1">
         <div className="rc-label">Fills</div>
         <div className="rc-muted">Nenhum ainda</div>
       </div>
 
-      {/* Comprar Plano – bem chamativo */}
       <button className="rc-plan" onClick={() => (window.location.href = '/planos')}>
         Comprar Plano
       </button>
@@ -82,27 +77,32 @@ export default function TradePanel() {
         }
         .rc-input:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.2)}
         .rc-actions{grid-column:1 / -1;display:flex;gap:10px;margin-top:4px}
+
+        /* Botões AINDA mais fortes */
         .rc-btn{
-          border:none;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;
-          color:#0b1220;transition:transform .14s ease, box-shadow .14s ease, filter .14s ease;
+          border:none;border-radius:12px;padding:11px 16px;font-weight:900;cursor:pointer;
+          color:#0b1220;letter-spacing:.2px;
+          transition:transform .12s ease, box-shadow .12s ease, filter .12s ease;
         }
-        .rc-buy{background:linear-gradient(180deg,#34d399,#10b981)}
-        .rc-sell{background:linear-gradient(180deg,#fb7185,#ef4444)}
-        .rc-reset{background:linear-gradient(180deg,#cbd5e1,#94a3b8);color:#0f172a}
-        .rc-btn:hover{transform:translateY(-1px);filter:saturate(1.15);box-shadow:0 10px 18px rgba(2,8,23,.35)}
+        .rc-buy{background:linear-gradient(180deg,#22e7a5,#00c38a);box-shadow:0 10px 16px rgba(0,195,138,.25)}
+        .rc-sell{background:linear-gradient(180deg,#ff6b7a,#ff2d55);box-shadow:0 10px 16px rgba(255,45,85,.25)}
+        .rc-reset{background:linear-gradient(180deg,#cbd5e1,#94a3b8);color:#0f172a;box-shadow:0 10px 16px rgba(148,163,184,.25)}
+        .rc-btn:hover{transform:translateY(-1px);filter:saturate(1.18)}
+        .rc-btn:active{transform:translateY(0)}
+
         .rc-muted{opacity:.7;font-size:12px;margin-top:6px}
         .rc-pnl{
           margin-top:10px;padding:8px;border-radius:10px;
-          background:rgba(34,197,94,.12);color:#22c55e;font-weight:800;font-size:13px
+          background:rgba(34,197,94,.12);color:#22c55e;font-weight:900;font-size:13px
         }
         .rc-plan{
           width:100%;border:none;border-radius:14px;padding:12px 14px;
           font-weight:900;cursor:pointer;color:#111827;
           background:linear-gradient(180deg,#ffd86b,#ffb020);
-          box-shadow:0 10px 22px rgba(255,176,32,.35), inset 0 1px 0 rgba(255,255,255,.55);
-          transition:transform .14s ease, box-shadow .14s ease, filter .14s ease
+          box-shadow:0 12px 24px rgba(255,176,32,.35), inset 0 1px 0 rgba(255,255,255,.55);
+          transition:transform .12s ease, box-shadow .12s ease, filter .12s ease
         }
-        .rc-plan:hover{transform:translateY(-1px);filter:saturate(1.1);box-shadow:0 14px 28px rgba(255,176,32,.45)}
+        .rc-plan:hover{transform:translateY(-1px);filter:saturate(1.1);box-shadow:0 16px 28px rgba(255,176,32,.45)}
       `}</style>
     </div>
   );
