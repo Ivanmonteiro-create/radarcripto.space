@@ -1,513 +1,109 @@
-"use client";
+'use client';
 
-import React, { useMemo, useRef, useState } from "react";
-import TVChart from "../components/TVChart";
+import React, { useMemo, useState, useCallback } from 'react';
+import TradePanel from '../components/TradePanel';
+import TVChart from '../components/TVChart';
 
-/* ========= Opções do topo ========= */
-const EXCHANGES = ["BINANCE", "COINBASE"] as const;
-const PAIRS_BY_EXCHANGE: Record<(typeof EXCHANGES)[number], string[]> = {
-  BINANCE: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"],
-  COINBASE: ["BTCUSD", "ETHUSD", "SOLUSD"],
-};
-const INTERVALS: Array<"1m" | "30m" | "1h" | "4h" | "1D"> = ["1m", "30m", "1h", "4h", "1D"];
-const TV_INTERVAL_MAP: Record<string, "1" | "30" | "60" | "240" | "D"> = {
-  "1m": "1",
-  "30m": "30",
-  "1h": "60",
-  "4h": "240",
-  "1D": "D",
-};
+type PanelSide = 'left' | 'right';
 
-type Side = "BUY" | "SELL";
-type Fill = { time: string; side: Side; qty: number; price: number };
-
-/* ========= Estilos ========= */
-const container: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "360px 1fr",
-  gap: "14px",
-  height: "var(--vh, 100vh)",
-  padding: "12px",
-  boxSizing: "border-box",
-};
-
-const topBar: React.CSSProperties = {
-  display: "flex",
-  gap: 10,
-  alignItems: "center",
-  marginBottom: 8,
-  flexWrap: "wrap",
-};
-
-const selectStyle: React.CSSProperties = {
-  background: "#0b1324",
-  color: "#e8eef7",
-  border: "1px solid #1f2a44",
-  borderRadius: 8,
-  padding: "6px 10px",
-};
-
-const btn: React.CSSProperties = {
-  background: "#0b1324",
-  color: "#e8eef7",
-  border: "1px solid #1f2a44",
-  borderRadius: 10,
-  padding: "8px 10px",
-  cursor: "pointer",
-  userSelect: "none",
-};
-
-const btnPrimary: React.CSSProperties = {
-  ...btn,
-  background: "#1261ff",
-  borderColor: "#1261ff",
-};
-
-const card: React.CSSProperties = {
-  background: "linear-gradient(180deg,#0b1324 0%, #0a142a 100%)",
-  border: "1px solid #1f2a44",
-  borderRadius: 14,
-  padding: 12,
-  color: "#d9e4ff",
-};
-
-const label: React.CSSProperties = { fontSize: 12, opacity: 0.85, marginBottom: 6 };
-const value: React.CSSProperties = { fontWeight: 700, fontSize: 16 };
-
-/* ========= Página ========= */
 export default function SimuladorPage() {
-  /* Topo */
-  const [exchange, setExchange] = useState<(typeof EXCHANGES)[number]>("BINANCE");
-  const [pair, setPair] = useState<string>("BTCUSDT");
-  const [interval, setInterval] = useState<(typeof INTERVALS)[number]>("1h");
+  // estado do layout
+  const [panelSide, setPanelSide] = useState<PanelSide>('left');
+  const [panelVisible, setPanelVisible] = useState(true);
 
-  /* Painel lateral */
-  const [panelOnRight, setPanelOnRight] = useState(false);
-  const [panelHidden, setPanelHidden] = useState(false);
-
-  /* Fullscreen */
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const pageRef = useRef<HTMLDivElement>(null);
-
-  // helpers fullscreen
-  const isFS = () =>
-    !!(
-      document.fullscreenElement ||
-      // @ts-ignore
-      document.webkitFullscreenElement ||
-      // @ts-ignore
-      document.mozFullScreenElement ||
-      // @ts-ignore
-      document.msFullscreenElement
-    );
-
-  const enterFS = async (el: HTMLElement) => {
-    try {
-      if (el.requestFullscreen) await el.requestFullscreen();
-      // @ts-ignore
-      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-      // @ts-ignore
-      else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
-      // @ts-ignore
-      else if (el.msRequestFullscreen) el.msRequestFullscreen();
-      setIsFullscreen(true);
-    } catch {
-      // fallback visual caso o browser bloqueie a Fullscreen API
-      setIsFullscreen((v) => !v);
-    }
-  };
-
-  const exitFS = async () => {
-    try {
-      if (document.exitFullscreen) await document.exitFullscreen();
-      // @ts-ignore
-      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-      // @ts-ignore
-      else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
-      // @ts-ignore
-      else if (document.msExitFullscreen) document.msExitFullscreen();
-      setIsFullscreen(false);
-    } catch {
-      setIsFullscreen(false);
-    }
-  };
-
-  React.useEffect(() => {
-    const handler = () => setIsFullscreen(isFS());
-    document.addEventListener("fullscreenchange", handler);
-    // @ts-ignore
-    document.addEventListener("webkitfullscreenchange", handler);
-    return () => {
-      document.removeEventListener("fullscreenchange", handler);
-      // @ts-ignore
-      document.removeEventListener("webkitfullscreenchange", handler);
-    };
+  const toggleSide = useCallback(() => {
+    setPanelSide((s) => (s === 'left' ? 'right' : 'left'));
   }, []);
 
-  /* Trade mock (igual) */
-  const [credits, setCredits] = useState(100_000);
-  const [realized, setRealized] = useState(0);
-  const [side, setSide] = useState<Side>("BUY");
-  const [qty, setQty] = useState(1);
-  const [price, setPrice] = useState(10_000);
-  const [avgPrice, setAvgPrice] = useState<number | null>(null);
-  const [positionQty, setPositionQty] = useState(0);
-  const [fills, setFills] = useState<Fill[]>([]);
-  const [activeTab, setActiveTab] =
-    useState<"fills" | "historico" | "notas" | "dicas" | "atalhos">("fills");
-
-  const markPrice = price;
-  const pnlUnrealized = useMemo(() => {
-    if (!avgPrice || positionQty === 0) return 0;
-    const dir = positionQty > 0 ? 1 : -1;
-    const diff = (markPrice - avgPrice) * dir;
-    return diff * Math.abs(positionQty);
-  }, [avgPrice, positionQty, markPrice]);
-
-  const tvSymbol = `${exchange}:${pair}`;
-  const tvInterval = TV_INTERVAL_MAP[interval] ?? "60";
-
-  function addFill(s: Side, q: number, p: number) {
-    const time = new Date().toLocaleTimeString();
-    setFills((f) => [{ time, side: s, qty: q, price: p }, ...f]);
-  }
-  function onBuy() {
-    if (positionQty < 0) {
-      const closing = Math.min(Math.abs(positionQty), qty);
-      const realizedPart = (avgPrice! - price) * closing;
-      setRealized((r) => r + realizedPart);
-      setPositionQty(positionQty + closing);
-    }
-    const rest = qty - Math.max(0, -positionQty);
-    if (rest > 0) {
-      const newQty = positionQty + rest;
-      const newAvg =
-        avgPrice === null || positionQty <= 0
-          ? price
-          : (avgPrice * positionQty + price * rest) / newQty;
-      setAvgPrice(newAvg);
-      setPositionQty(newQty);
-    }
-    addFill("BUY", qty, price);
-  }
-  function onSell() {
-    if (positionQty > 0) {
-      const closing = Math.min(positionQty, qty);
-      const realizedPart = (price - avgPrice!) * closing;
-      setRealized((r) => r + realizedPart);
-      setPositionQty(positionQty - closing);
-    }
-    const rest = qty - Math.max(0, positionQty);
-    if (rest > 0) {
-      const newQty = positionQty - rest;
-      const newAvg =
-        avgPrice === null || positionQty >= 0
-          ? price
-          : (avgPrice * Math.abs(positionQty) + price * rest) / Math.abs(newQty);
-      setAvgPrice(newAvg);
-      setPositionQty(newQty);
-    }
-    addFill("SELL", qty, price);
-  }
-  function onReset() {
-    setCredits(100_000);
-    setRealized(0);
-    setSide("BUY");
-    setQty(1);
-    setPrice(10_000);
-    setAvgPrice(null);
-    setPositionQty(0);
-    setFills([]);
-  }
-
-  /* layout dinâmico */
-  const rootStyles: React.CSSProperties = useMemo(() => {
-    const grid = panelHidden ? "0px 1fr" : panelOnRight ? "1fr 360px" : "360px 1fr";
-    return {
-      ...container,
-      gridTemplateColumns: grid,
-      transition: "grid-template-columns .25s ease",
-      height: "100vh",
-    };
-  }, [panelOnRight, panelHidden]);
-
-  // altura útil mobile
-  React.useEffect(() => {
-    const setVH = () => {
-      const vh = window.innerHeight * 0.01;
-      document.documentElement.style.setProperty("--vh", `${vh * 100}px`);
-    };
-    setVH();
-    window.addEventListener("resize", setVH);
-    return () => window.removeEventListener("resize", setVH);
+  const toggleVisible = useCallback(() => {
+    setPanelVisible((v) => !v);
   }, []);
+
+  // largura fixa do painel, gráfico ocupa o resto
+  const PANEL_WIDTH = 360;
+
+  const container: React.CSSProperties = {
+    height: 'calc(100vh - 64px)', // ocupa até o rodapé (ajuste o 64px se houver header)
+    minHeight: 520,
+    display: 'flex',
+    gap: 8,
+    padding: 8,
+    boxSizing: 'border-box',
+  };
+
+  const panelStyle: React.CSSProperties = {
+    width: panelVisible ? PANEL_WIDTH : 0,
+    transition: 'width .25s ease',
+    overflow: 'hidden',
+    flex: '0 0 auto',
+  };
+
+  const chartWrap: React.CSSProperties = {
+    flex: '1 1 auto',
+    minWidth: 0,
+    borderRadius: 8,
+    border: '1px solid rgba(255,255,255,0.08)',
+    boxShadow: '0 0 0 1px rgba(0,0,0,.25) inset',
+    position: 'relative',
+    overflow: 'hidden',
+  };
+
+  const topBar: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '6px 8px',
+  };
+
+  const pill: React.CSSProperties = {
+    border: '1px solid rgba(255,255,255,.1)',
+    background: 'rgba(255,255,255,.06)',
+    borderRadius: 8,
+    padding: '8px 10px',
+    fontSize: 12,
+    cursor: 'pointer',
+    userSelect: 'none',
+  };
 
   return (
-    <div
-      ref={pageRef}
-      style={{
-        height: "100vh",
-        background: "#0a1222",
-        ...(isFullscreen ? { position: "fixed", inset: 0, zIndex: 9999 } : {}),
-      }}
-    >
-      {/* Barra topo */}
-      <div style={{ ...topBar, padding: "10px 12px" }}>
-        <div style={{ display: "flex", gap: 8 }}>
-          <span style={{ ...label, margin: 0 }}>Exchange</span>
-          <select
-            style={selectStyle}
-            value={exchange}
-            onChange={(e) => {
-              const ex = e.target.value as (typeof EXCHANGES)[number];
-              setExchange(ex);
-              setPair(PAIRS_BY_EXCHANGE[ex][0]);
-            }}
-          >
-            {EXCHANGES.map((ex) => (
-              <option key={ex} value={ex}>
-                {ex}
-              </option>
-            ))}
-          </select>
-
-          <span style={{ ...label, margin: 0 }}>Par</span>
-          <select style={selectStyle} value={pair} onChange={(e) => setPair(e.target.value)}>
-            {PAIRS_BY_EXCHANGE[exchange].map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-
-          <span style={{ ...label, margin: 0 }}>Tempo</span>
-          <select
-            style={selectStyle}
-            value={interval}
-            onChange={(e) => setInterval(e.target.value as any)}
-          >
-            {INTERVALS.map((it) => (
-              <option key={it} value={it}>
-                {it}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-          <button style={btn} onClick={() => setPanelOnRight((v) => !v)} title="Mover painel">
-            Painel → {panelOnRight ? "esquerda" : "direita"}
-          </button>
-          <button
-            style={btn}
-            onClick={() => setPanelHidden((v) => !v)}
-            title="Ocultar/mostrar painel"
-          >
-            {panelHidden ? "Mostrar painel" : "Ocultar painel"}
-          </button>
-          <button
-            style={btn}
-            onClick={() => {
-              const el = pageRef.current!;
-              if (!isFS()) enterFS(el);
-              else exitFS();
-            }}
-            title="Tela cheia"
-          >
-            {isFullscreen ? "Sair tela cheia" : "Tela cheia"}
-          </button>
-        </div>
-      </div>
-
-      {/* Grid principal */}
-      <div style={{ ...rootStyles, paddingTop: 0 }}>
-        {/* Painel de Trade */}
-        {!panelHidden && (
-          <aside
-            style={{
-              ...card,
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-              height: "calc(100vh - 62px)",
-              overflow: "hidden",
-            }}
-          >
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Painel de Trade</h2>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <div style={{ ...card, padding: 10 }}>
-                <div style={label}>Créditos</div>
-                <div style={value}>US$ {credits.toLocaleString()}</div>
-              </div>
-              <div style={{ ...card, padding: 10 }}>
-                <div style={label}>Lucro Realizado</div>
-                <div style={{ ...value, color: realized >= 0 ? "#29e58e" : "#ff6b6b" }}>
-                  US$ {realized.toFixed(2)}
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-              <div>
-                <div style={label}>Lado</div>
-                <select
-                  style={selectStyle}
-                  value={side}
-                  onChange={(e) => setSide(e.target.value as Side)}
-                >
-                  <option value="BUY">BUY (Long)</option>
-                  <option value="SELL">SELL (Short)</option>
-                </select>
-              </div>
-              <div>
-                <div style={label}>Qtd</div>
-                <input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={qty}
-                  onChange={(e) => setQty(Math.max(1, Number(e.target.value)))}
-                  style={{ ...selectStyle, width: "100%" }}
-                />
-              </div>
-              <div>
-                <div style={label}>Preço</div>
-                <input
-                  type="number"
-                  step={1}
-                  value={price}
-                  onChange={(e) => setPrice(Number(e.target.value))}
-                  style={{ ...selectStyle, width: "100%" }}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                style={{ ...btn, background: "#29e58e", borderColor: "#29e58e", color: "#0b1324" }}
-                onClick={() => (side === "BUY" ? onBuy() : onSell())}
-              >
-                {side === "BUY" ? "Buy" : "Sell"}
-              </button>
-              <button
-                style={{ ...btn, background: "#ff6b6b", borderColor: "#ff6b6b", color: "#0b1324" }}
-                onClick={() => (side === "BUY" ? onSell() : onBuy())}
-              >
-                {side === "BUY" ? "Sell" : "Buy"}
-              </button>
-              <button style={btn} onClick={onReset}>
-                Reset
-              </button>
-            </div>
-
-            <div style={{ ...card, padding: 10 }}>
-              <div style={label}>Posição</div>
-              <div style={{ fontSize: 14, lineHeight: 1.5 }}>
-                Lote: <b>{positionQty}</b>{" "}
-                {avgPrice ? (
-                  <>
-                    | Preço Médio: <b>{avgPrice.toFixed(2)}</b>
-                  </>
-                ) : (
-                  "| Preço Médio: —"
-                )}
-                <br />
-                <span>
-                  PNL não realizado (mark={markPrice.toLocaleString()}):{" "}
-                  <b style={{ color: pnlUnrealized >= 0 ? "#29e58e" : "#ff6b6b" }}>
-                    US$ {pnlUnrealized.toFixed(2)}
-                  </b>
-                </span>
-              </div>
-            </div>
-
-            <div style={{ ...card, padding: 10, flex: 1, display: "flex", flexDirection: "column" }}>
-              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-                {(["fills", "historico", "notas", "dicas", "atalhos"] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    style={{
-                      ...btn,
-                      padding: "6px 10px",
-                      background: activeTab === tab ? "#1b2744" : "#0b1324",
-                    }}
-                    onClick={() => setActiveTab(tab)}
-                  >
-                    {tab[0].toUpperCase() + tab.slice(1)}
-                  </button>
-                ))}
-              </div>
-
-              <div style={{ flex: 1, overflow: "auto" }}>
-                {activeTab === "fills" ? (
-                  <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr style={{ textAlign: "left", opacity: 0.7 }}>
-                        <th>Hora</th>
-                        <th>Lado</th>
-                        <th>Qtd</th>
-                        <th>Preço</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {fills.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} style={{ paddingTop: 6, opacity: 0.8 }}>
-                            (Nenhum ainda)
-                          </td>
-                        </tr>
-                      ) : (
-                        fills.map((f, i) => (
-                          <tr key={i}>
-                            <td>{f.time}</td>
-                            <td>{f.side}</td>
-                            <td>{f.qty}</td>
-                            <td>{f.price}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div style={{ opacity: 0.8, fontSize: 13 }}>(Em breve)</div>
-                )}
-              </div>
-            </div>
-
-            <button
-              style={{
-                ...btnPrimary,
-                width: "100%",
-                marginTop: 2,
-                background: "linear-gradient(90deg, #ffc107 0%, #ff9800 100%)",
-                borderColor: "#ff9800",
-                color: "#141b2d",
-                fontWeight: 800,
-              }}
-              onClick={() => (window.location.href = "/planos")}
-              title="Ir para os planos pagos"
-            >
-              Comprar Plano
-            </button>
-          </aside>
-        )}
-
-        {/* Gráfico */}
-        <section
-          style={{
-            position: "relative",
-            height: "calc(100vh - 62px)",
-            border: "1px solid #1f2a44",
-            borderRadius: 14,
-            overflow: "hidden",
-            background: "linear-gradient(180deg,#0b1324 0%, #0a142a 100%)",
-            transition: "height .2s ease",
+    <main style={{ padding: 8 }}>
+      {/* Barra de controles do layout (mantém os seus botões) */}
+      <div style={topBar}>
+        <button style={pill} onClick={toggleSide}>
+          Painel → {panelSide === 'left' ? 'direita' : 'esquerda'}
+        </button>
+        <button style={pill} onClick={toggleVisible}>
+          {panelVisible ? 'Ocultar painel' : 'Mostrar painel'}
+        </button>
+        <a
+          style={pill}
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            document.documentElement.requestFullscreen?.();
           }}
         >
-          <TVChart symbol={`${exchange}:${pair}`} interval={tvInterval} />
-        </section>
+          Tela cheia
+        </a>
       </div>
-    </div>
+
+      {/* Layout em 2 colunas, lado variável, gráfico sempre preenchendo o resto */}
+      <section
+        style={{
+          ...container,
+          flexDirection: panelSide === 'left' ? 'row' : 'row-reverse',
+        }}
+      >
+        {/* Painel (só some a coluna; nada mais muda) */}
+        <aside style={panelStyle}>
+          <TradePanel />
+        </aside>
+
+        {/* Gráfico – cresce/encolhe automaticamente e re-renderiza no resize */}
+        <div style={chartWrap}>
+          <TVChart />
+        </div>
+      </section>
+    </main>
   );
 }
