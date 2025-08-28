@@ -1,34 +1,70 @@
 'use client';
 
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import TradePanel from '../components/TradePanel';
 import TVChart from '../components/TVChart';
 
 type PanelSide = 'left' | 'right';
 
 export default function SimuladorPage() {
-  // estado do layout
   const [panelSide, setPanelSide] = useState<PanelSide>('left');
   const [panelVisible, setPanelVisible] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(
+    typeof document !== 'undefined' ? !!document.fullscreenElement : false
+  );
 
-  const toggleSide = useCallback(() => {
-    setPanelSide((s) => (s === 'left' ? 'right' : 'left'));
+  // listeners para fullscreen (botão e atalhos F / X)
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
 
-  const toggleVisible = useCallback(() => {
-    setPanelVisible((v) => !v);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'f' && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen?.();
+      }
+      if (e.key.toLowerCase() === 'x' && document.fullscreenElement) {
+        document.exitFullscreen?.();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // largura fixa do painel, gráfico ocupa o resto
+  const toggleSide = useCallback(
+    () => setPanelSide((s) => (s === 'left' ? 'right' : 'left')),
+    []
+  );
+  const toggleVisible = useCallback(() => setPanelVisible((v) => !v), []);
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) document.exitFullscreen?.();
+    else document.documentElement.requestFullscreen?.();
+  }, []);
+
   const PANEL_WIDTH = 360;
 
   const container: React.CSSProperties = {
-    height: 'calc(100vh - 64px)', // ocupa até o rodapé (ajuste o 64px se houver header)
+    height: 'calc(100vh - 64px)', // ocupa até o rodapé
     minHeight: 520,
     display: 'flex',
-    gap: 8,
-    padding: 8,
+    gap: 10,
+    padding: 10,
     boxSizing: 'border-box',
+  };
+
+  const chartShell: React.CSSProperties = {
+    position: 'relative',
+    flex: '1 1 auto',
+    minWidth: 0,
+    borderRadius: 14,
+    background:
+      'linear-gradient(180deg, rgba(18, 24, 38, 0.9), rgba(15, 18, 28, 0.9))',
+    border: '1px solid rgba(255,255,255,0.06)',
+    boxShadow:
+      '0 12px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,0.04)',
+    overflow: 'hidden',
   };
 
   const panelStyle: React.CSSProperties = {
@@ -38,69 +74,69 @@ export default function SimuladorPage() {
     flex: '0 0 auto',
   };
 
-  const chartWrap: React.CSSProperties = {
-    flex: '1 1 auto',
-    minWidth: 0,
-    borderRadius: 8,
-    border: '1px solid rgba(255,255,255,0.08)',
-    boxShadow: '0 0 0 1px rgba(0,0,0,.25) inset',
-    position: 'relative',
-    overflow: 'hidden',
-  };
-
-  const topBar: React.CSSProperties = {
+  const controlBar: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
-    padding: '6px 8px',
+    padding: '6px 10px',
   };
 
-  const pill: React.CSSProperties = {
-    border: '1px solid rgba(255,255,255,.1)',
+  const ghostBtn: React.CSSProperties = {
+    border: '1px solid rgba(255,255,255,.12)',
     background: 'rgba(255,255,255,.06)',
-    borderRadius: 8,
-    padding: '8px 10px',
+    borderRadius: 10,
+    padding: '8px 12px',
     fontSize: 12,
     cursor: 'pointer',
-    userSelect: 'none',
   };
 
   return (
     <main style={{ padding: 8 }}>
-      {/* Barra de controles do layout (mantém os seus botões) */}
-      <div style={topBar}>
-        <button style={pill} onClick={toggleSide}>
+      {/* barra superior – mantém sua lógica, só deixei mais clean */}
+      <div style={controlBar}>
+        <button style={ghostBtn} onClick={toggleSide}>
           Painel → {panelSide === 'left' ? 'direita' : 'esquerda'}
         </button>
-        <button style={pill} onClick={toggleVisible}>
+        <button style={ghostBtn} onClick={toggleVisible}>
           {panelVisible ? 'Ocultar painel' : 'Mostrar painel'}
         </button>
-        <a
-          style={pill}
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            document.documentElement.requestFullscreen?.();
-          }}
-        >
-          Tela cheia
-        </a>
+        <button style={ghostBtn} onClick={toggleFullscreen} title="Atalho: F/X">
+          {isFullscreen ? 'X' : 'F'} Tela cheia
+        </button>
       </div>
 
-      {/* Layout em 2 colunas, lado variável, gráfico sempre preenchendo o resto */}
       <section
         style={{
           ...container,
           flexDirection: panelSide === 'left' ? 'row' : 'row-reverse',
         }}
       >
-        {/* Painel (só some a coluna; nada mais muda) */}
         <aside style={panelStyle}>
           <TradePanel />
         </aside>
 
-        {/* Gráfico – cresce/encolhe automaticamente e re-renderiza no resize */}
-        <div style={chartWrap}>
+        <div style={chartShell}>
+          {/* botão flutuante no canto do gráfico (mesma ação de tela cheia) */}
+          <button
+            onClick={toggleFullscreen}
+            title="Tela cheia (F) / Sair (X)"
+            style={{
+              position: 'absolute',
+              top: 10,
+              right: 10,
+              zIndex: 2,
+              border: '1px solid rgba(255,255,255,.15)',
+              background: 'rgba(18, 22, 30, .9)',
+              borderRadius: 10,
+              padding: '8px 10px',
+              fontSize: 12,
+              cursor: 'pointer',
+            }}
+          >
+            {isFullscreen ? 'X' : 'F'}
+          </button>
+
+          {/* TVChart preenche 100% */}
           <TVChart />
         </div>
       </section>
