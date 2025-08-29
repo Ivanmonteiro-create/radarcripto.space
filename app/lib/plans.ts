@@ -1,13 +1,12 @@
 // lib/plans.ts
 export type PlanId = "starter" | "pro" | "master";
-
 export type Currency = "USD" | "BRL" | "EUR";
 
 export interface Plan {
   id: PlanId;
   name: string;
   tagline: string;
-  prices: Record<Currency, number>; // unit_amount por MÊS
+  prices: Record<Currency, number>;
   features: string[];
 }
 
@@ -52,6 +51,5 @@ export const PLANS: Record<PlanId, Plan> = {
 };
 
 export function getPlan(planId: string): Plan | null {
-  const id = planId as PlanId;
-  return PLANS[id] ?? null;
+  return PLANS[planId as PlanId] ?? null;
 }
