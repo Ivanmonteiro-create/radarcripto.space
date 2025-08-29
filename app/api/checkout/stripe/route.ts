@@ -1,56 +1,57 @@
 // app/api/checkout/stripe/route.ts
 import Stripe from "stripe";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { PLANS } from "@/lib/plans";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: "2024-06-20",
 });
 
-export async function POST(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const { plan, currency } = await req.json();
+    const { searchParams } = new URL(req.url);
+    const plan = (searchParams.get("plan") || "pro") as keyof typeof PLANS;
+    const currency = (searchParams.get("currency") || "USD").toUpperCase();
 
-    // preços simples para demo; ajuste como quiser
+    if (!PLANS[plan]) {
+      return NextResponse.json({ error: "Plano inválido" }, { status: 400 });
+    }
     const amountMap: Record<string, number> = {
-      pro: 1900,
-      master: 4900,
+      USD: PLANS[plan].usd,
+      EUR: PLANS[plan].eur,
     };
-    const amount = amountMap[plan?.toLowerCase()] ?? 1900;
+    if (!(currency in amountMap)) {
+      return NextResponse.json({ error: "Moeda não suportada" }, { status: 400 });
+    }
 
-    const urlBase =
-      process.env.NEXT_PUBLIC_BASE_URL ??
-      (process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : "http://localhost:3000");
+    const unitAmount = Math.round(amountMap[currency] * 100); // em cents
+
+    const base = process.env.NEXT_PUBLIC_BASE_URL!;
+    const successUrl = process.env.STRIPE_SUCCESS_URL || `${base}/success?gateway=stripe&plan=${plan}`;
+    const cancelUrl  = process.env.STRIPE_CANCEL_URL  || `${base}/cancel?gateway=stripe&plan=${plan}`;
 
     const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      success_url: `${urlBase}/checkout/success?plan=${plan}`,
-      cancel_url: `${urlBase}/checkout/cancel`,
-      currency: (currency || "usd").toLowerCase(),
+      mode: "subscription",
       line_items: [
         {
           price_data: {
-            currency: (currency || "usd").toLowerCase(),
+            currency: currency.toLowerCase(),
+            recurring: { interval: "month" },
+            unit_amount: unitAmount,
             product_data: {
-              name:
-                plan?.toLowerCase() === "master"
-                  ? "RadarCripto Master"
-                  : "RadarCripto Pro",
+              name: `${PLANS[plan].label} (mensal)`,
             },
-            unit_amount: amount, // em cents
           },
           quantity: 1,
         },
       ],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
     });
 
-    return NextResponse.json({ url: session.url }, { status: 200 });
-  } catch (err: any) {
-    console.error("Stripe error:", err);
-    return NextResponse.json(
-      { error: err?.message || "Stripe error" },
-      { status: 500 }
-    );
+    return NextResponse.redirect(session.url!, 303);
+  } catch (e: any) {
+    console.error("Stripe error:", e);
+    return NextResponse.json({ error: e.message || "Erro Stripe" }, { status: 500 });
   }
 }
