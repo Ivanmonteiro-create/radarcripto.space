@@ -1,39 +1,52 @@
 // app/api/checkout/coinbase/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { PLANS } from "@/lib/plans";
-import coinbase from "coinbase-commerce-node";
+import { getPlan } from "../../../../lib/plans";
 
-const { Client, resources } = coinbase;
-const { Charge } = resources as any;
-
-Client.init(process.env.COINBASE_COMMERCE_API_KEY as string);
-
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const plan = (searchParams.get("plan") || "pro") as keyof typeof PLANS;
-
-    if (!PLANS[plan]) {
-      return NextResponse.json({ error: "Plano inválido" }, { status: 400 });
+    const apiKey = process.env.COINBASE_COMMERCE_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "COINBASE_COMMERCE_API_KEY ausente no .env" },
+        { status: 500 }
+      );
     }
 
-    const base = process.env.NEXT_PUBLIC_BASE_URL!;
-    const successUrl = `${base}/success?gateway=coinbase&plan=${plan}`;
-    const cancelUrl  = `${base}/cancel?gateway=coinbase&plan=${plan}`;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const coinbase = require("coinbase-commerce-node");
+    const Client = coinbase.Client;
+    const resources = coinbase.resources;
 
-    const charge = await Charge.create({
-      name: PLANS[plan].label,
-      description: `Assinatura mensal do plano ${PLANS[plan].label}`,
+    Client.init(apiKey);
+
+    const { planId, currency } = (await req.json()) as {
+      planId: string;
+      currency?: "USD" | "EUR";
+    };
+
+    const plan = getPlan(planId);
+    if (!plan) return NextResponse.json({ error: "Plano inválido" }, { status: 400 });
+
+    const curr = (currency || "USD").toUpperCase();
+    const amount = plan.prices[curr as "USD" | "EUR"] ?? plan.prices.USD;
+    if ((amount || 0) <= 0) return NextResponse.json({ url: "/" });
+
+    const base = process.env.NEXT_PUBLIC_BASE_URL || "";
+    const charge = await resources.Charge.create({
+      name: plan.name,
+      description: plan.tagline,
       pricing_type: "fixed_price",
-      local_price: { amount: PLANS[plan].usd.toString(), currency: "USD" },
-      metadata: { plan },
-      redirect_url: successUrl,
-      cancel_url: cancelUrl,
+      local_price: { amount: String(amount), currency: curr },
+      metadata: { planId: plan.id },
+      redirect_url: `${base}/planos?ok=1`,
+      cancel_url: `${base}/planos?cancel=1`,
     });
 
-    return NextResponse.redirect(charge.hosted_url, 303);
-  } catch (e: any) {
-    console.error("Coinbase error:", e);
-    return NextResponse.json({ error: e.message || "Erro Coinbase" }, { status: 500 });
+    return NextResponse.json({ url: charge.hosted_url });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err?.message || "Erro ao criar cobrança Coinbase" },
+      { status: 500 }
+    );
   }
 }
