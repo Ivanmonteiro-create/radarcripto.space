@@ -13,7 +13,7 @@
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "stripe": "^16.5.0",
-    "coinbase-commerce-node": "^1.0.5",
+    "coinbase-commerce-node": "1.0.4",
     "mercadopago": "^2.1.0"
   },
   "devDependencies": {
