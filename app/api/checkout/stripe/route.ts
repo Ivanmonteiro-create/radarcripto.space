@@ -1,7 +1,7 @@
 // app/api/checkout/stripe/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { getPlan, Currency } from "@/lib/plans";
+import { getPlan, Currency } from "../../../../lib/plans";
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY || "";
 
@@ -27,34 +27,28 @@ export async function POST(req: NextRequest) {
     if (!plan) return NextResponse.json({ error: "Plano inválido" }, { status: 400 });
 
     const curr: Currency = (currency || "USD").toUpperCase() as Currency;
-    const amount = Math.round((plan.prices[curr] || 0) * 100); // em cents
+    const amount = Math.round((plan.prices[curr] || 0) * 100);
 
-    // Gratuito? redireciona direto
     if (amount === 0) {
       return NextResponse.json({ url: success_url || "/" });
     }
 
+    const base = process.env.NEXT_PUBLIC_BASE_URL || "";
     const session = await stripe.checkout.sessions.create({
-      mode: "payment", // poderia ser subscription se preferir
-      success_url: success_url || `${process.env.NEXT_PUBLIC_BASE_URL || ""}/planos?ok=1`,
-      cancel_url: cancel_url || `${process.env.NEXT_PUBLIC_BASE_URL || ""}/planos?cancel=1`,
+      mode: "payment",
+      success_url: success_url || `${base}/planos?ok=1`,
+      cancel_url: cancel_url || `${base}/planos?cancel=1`,
       line_items: [
         {
           price_data: {
             currency: curr.toLowerCase(),
-            product_data: {
-              name: plan.name,
-              description: plan.tagline,
-            },
+            product_data: { name: plan.name, description: plan.tagline },
             unit_amount: amount,
-            recurring: undefined, // deixe undefined para pagamento único; use { interval: "month" } se assinatura
           },
           quantity: 1,
         },
       ],
-      metadata: {
-        planId: plan.id,
-      },
+      metadata: { planId: plan.id },
     });
 
     return NextResponse.json({ url: session.url });
