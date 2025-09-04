@@ -6,13 +6,25 @@ export default function Home() {
       alignItems: 'center',
       justifyContent: 'center',
       flexDirection: 'column',
-      fontFamily: 'system-ui, Arial, sans-serif',
+      gap: 12,
       padding: 24,
-      textAlign: 'center'
+      background: 'linear-gradient(180deg,#0b1220,#0f1b31)',
+      color: '#e6f0ff',
+      textAlign: 'center',
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif'
     }}>
-      <h1 style={{fontSize: 36, marginBottom: 12}}>🚧 Em construção</h1>
-      <p style={{fontSize: 18, opacity: 0.8}}>
-        RadarCripto.space — simulador de trading (fase 1)
+      <div style={{
+        fontSize: 16,
+        padding: '6px 12px',
+        borderRadius: 999,
+        background: 'rgba(255,255,255,0.08)',
+        border: '1px solid rgba(255,255,255,0.12)'
+      }}>
+        🚧 Em construção
+      </div>
+      <h1 style={{ fontSize: 36, margin: 0 }}>RadarCripto.space</h1>
+      <p style={{ opacity: 0.9, margin: 0 }}>
+        Simulador de trading — fase 1 (site base online)
       </p>
     </main>
   );
