@@ -19,11 +19,11 @@ export default function Navbar() {
   });
 
   return (
-    <nav aria-label="Navegação principal" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <nav aria-label="Navegação principal" style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <Link href="/" legacyBehavior><a style={pill}>Início</a></Link>
       <Link href="/sobre" legacyBehavior><a style={pill}>Sobre</a></Link>
 
-      <div style={{ width: 8 }} />
+      <div style={{ width: 12 }} />
 
       <Link href="/simulador" legacyBehavior>
         <a style={cta("linear-gradient(180deg,#16a34a,#15803d)")}>Acessar simulador</a>
