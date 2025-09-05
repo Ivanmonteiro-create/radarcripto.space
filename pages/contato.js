@@ -36,7 +36,7 @@ export default function Contato() {
       </p>
 
       <div style={card}>
-        <form action="mailto:contato@radarcrypto.space" method="post" encType="text/plain" onSubmit={() => {}}>
+        <form action="mailto:contato@radarcrypto.space" method="post" encType="text/plain">
           <div style={{ display: "grid", gap: 12 }}>
             <label>
               <div style={{ marginBottom: 6, opacity: .8 }}>Nome</div>
