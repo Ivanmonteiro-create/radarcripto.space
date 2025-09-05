@@ -3,6 +3,9 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import CTAButton from '../components/CTAButton';
 
+const MAILTO =
+  'mailto:contato@radarcripto.space?subject=Contato%20via%20RadarCrypto.space';
+
 export default function Home() {
   return (
     <>
@@ -61,17 +64,16 @@ export default function Home() {
               background: 'rgba(0,0,0,.24)',
             }}
           >
-            <span role="img" aria-label="construction">
-              🛠️
-            </span>
+            <span role="img" aria-label="construction">🛠️</span>
             Em construção
           </div>
 
           {/* CTAs */}
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 20 }}>
-            {/* se /simulador ainda não existir, pode apontar para /sobre temporariamente */}
+            {/* quando /simulador existir, este botão já estará correto */}
             <CTAButton href="/simulador">Acessar simulador</CTAButton>
-            <CTAButton href="/contato" variant="ghost">
+            {/* AGORA abre o e-mail direto (não /contato) */}
+            <CTAButton href={MAILTO} variant="ghost">
               Fale com a gente
             </CTAButton>
           </div>
