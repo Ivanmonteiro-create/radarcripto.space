@@ -15,14 +15,8 @@ export default function Navbar() {
     backdropFilter: 'blur(6px)',
   };
 
-  const brand = {
-    fontWeight: 700,
-    color: '#cfe9ff',
-    letterSpacing: .2,
-  };
-
+  const brand = { fontWeight: 700, color: '#cfe9ff', letterSpacing: .2 };
   const row = { display: 'flex', gap: 8, alignItems: 'center' };
-
   const chip = (active) => ({
     padding: '6px 10px',
     borderRadius: 10,
@@ -30,7 +24,6 @@ export default function Navbar() {
     border: '1px solid rgba(255,255,255,.10)',
     background: active ? 'rgba(23, 178, 106, .25)' : 'rgba(255,255,255,.06)',
   });
-
   const cta = {
     padding: '8px 12px',
     borderRadius: 10,
@@ -40,7 +33,6 @@ export default function Navbar() {
     background: '#25d366',
     border: '1px solid rgba(37,211,102,.6)',
   };
-
   const ghost = {
     padding: '8px 12px',
     borderRadius: 10,
@@ -52,10 +44,7 @@ export default function Navbar() {
 
   return (
     <nav style={bar}>
-      <div style={row}>
-        <span style={brand}>RadarCrypto.space</span>
-      </div>
-
+      <div style={row}><span style={brand}>RadarCrypto.space</span></div>
       <div style={row}>
         <Link href="/"><span style={chip(false)}>Início</span></Link>
         <Link href="/sobre"><span style={chip(false)}>Sobre</span></Link>
