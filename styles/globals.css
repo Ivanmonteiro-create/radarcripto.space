@@ -1,0 +1,16 @@
+/* styles/globals.css */
+* { box-sizing: border-box; }
+html, body { padding: 0; margin: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Helvetica Neue", sans-serif;
+  background: #0f1226; /* seu fundo escuro atual */
+  color: #fff;
+}
+a { color: inherit; text-decoration: none; }
+nav a { opacity: 0.8; }
+nav a:hover { opacity: 1; }
+.container {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 24px;
+}
