@@ -1,51 +1,44 @@
 // components/Header.js
-import Link from 'next/link';
-import { useRouter } from 'next/router';
+import Link from "next/link";
+import Navbar from "@components/Navbar";
 
-const linkBase = {
-  padding: '8px 12px',
-  borderRadius: 8,
-  textDecoration: 'none',
-  border: '1px solid rgba(255,255,255,.12)',
-  background: 'rgba(255,255,255,.04)',
-  fontWeight: 600,
-};
-
-export default function Header() {
-  const router = useRouter();
-  const is = (path) => router.pathname === path;
-
-  const navItem = (href, label) => (
-    <Link href={href} style={{
-      ...linkBase,
-      borderColor: is(href) ? 'rgba(34,197,94,.6)' : 'rgba(255,255,255,.12)',
-      background: is(href) ? 'rgba(34,197,94,.15)' : 'rgba(255,255,255,.04)',
-      color: '#fff',
-    }}>
-      {label}
-    </Link>
-  );
-
+export default function Header({ showNav = true }) {
   return (
-    <header style={{
-      position: 'sticky', top: 0, zIndex: 50,
-      background: 'rgba(7,13,23,.9)', backdropFilter: 'blur(6px)',
-      borderBottom: '1px solid rgba(255,255,255,.08)',
-    }}>
-      <div style={{
-        maxWidth: 1080, margin: '0 auto',
-        padding: '10px 16px', display: 'flex',
-        alignItems: 'center', justifyContent: 'space-between'
-      }}>
-        <Link href="/" style={{ fontWeight: 700, textDecoration: 'none', color: '#fff' }}>
-          RadarCrypto.space
+    <header
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 20,
+        backdropFilter: "saturate(120%) blur(6px)",
+        background: "rgba(7,16,26,.75)",
+        borderBottom: "1px solid rgba(255,255,255,.06)",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 1040,
+          margin: "0 auto",
+          padding: "10px 16px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+        }}
+      >
+        <Link href="/" legacyBehavior>
+          <a
+            aria-label="Voltar ao início"
+            style={{
+              fontWeight: 700,
+              letterSpacing: ".2px",
+              opacity: .9,
+            }}
+          >
+            RadarCrypto.space
+          </a>
         </Link>
-        <nav style={{ display: 'flex', gap: 8 }}>
-          {navItem('/', 'Início')}
-          {navItem('/sobre', 'Sobre')}
-          {navItem('/contato', 'Contato')}
-          {navItem('/simulador', 'Simulador')} {/* NOVO */}
-        </nav>
+
+        {showNav ? <Navbar /> : null}
       </div>
     </header>
   );
