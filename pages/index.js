@@ -1,85 +1,62 @@
-// /pages/index.js
-import Navbar from "@components/Navbar";
-import Footer from "@components/Footer";
+// pages/index.js
+import Link from "next/link";
 
 export default function Home() {
-  const page = {
-    minHeight: "100vh",
-    background: "linear-gradient(180deg,#0f172a 0%, #0b1222 100%)",
-    color: "#E5E7EB",
-    display: "flex",
-    flexDirection: "column",
-  };
-
-  const main = {
-    flex: 1,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "40px 16px",
-  };
-
-  const card = {
-    width: "100%",
-    maxWidth: 900,
-    borderRadius: 14,
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    padding: "28px",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
-  };
-
-  const tag = {
-    display: "inline-block",
-    fontSize: 12,
-    letterSpacing: 1.5,
-    color: "#9CA3AF",
-    marginBottom: 16,
-  };
-
-  const title = {
-    margin: "0 0 10px 0",
-    fontSize: 42,
-    color: "#fff",
-    textAlign: "center",
-  };
-
-  const subtitle = {
-    margin: "0 0 14px 0",
-    textAlign: "center",
-    color: "#cbd5e1",
-  };
-
-  const status = {
-    display: "inline-block",
-    margin: "0 auto 6px",
-    padding: "6px 10px",
-    borderRadius: 999,
-    background: "rgba(148,163,184,0.12)",
-    border: "1px solid rgba(148,163,184,0.25)",
-    color: "#cbd5e1",
-    fontSize: 12,
-  };
-
   return (
-    <div style={page}>
-      <Navbar />
+    <section style={{ display: "grid", placeItems: "center", minHeight: "72vh" }}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 900,
+          padding: "28px 24px",
+          borderRadius: 14,
+          background: "linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03))",
+          border: "1px solid rgba(255,255,255,.08)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,.06)",
+          textAlign: "center",
+        }}
+      >
+        <div style={{ opacity: .75, fontSize: 12, letterSpacing: ".18em" }}>SIMULADOR DE TRADING</div>
+        <h1 style={{ fontSize: 40, margin: "12px 0 4px" }}>RadarCrypto.space</h1>
+        <p style={{ opacity: .85, marginBottom: 14 }}>Em construção — Fase 1 (site base online)</p>
 
-      <main style={main}>
-        <div style={card}>
-          <div style={{ textAlign: "center" }}>
-            <span style={tag}>SIMULADOR DE TRADING</span>
-            <h1 style={title}>RadarCrypto.space</h1>
-            <p style={subtitle}>Em construção — Fase 1 (site base online)</p>
-            <div style={status}>🚧 Em construção</div>
-          </div>
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 10,
+            marginTop: 6,
+          }}
+        >
+          <Link href="/simulador" legacyBehavior>
+            <a
+              style={{
+                padding: "10px 16px",
+                borderRadius: 12,
+                fontWeight: 700,
+                background: "linear-gradient(180deg,#16a34a,#15803d)",
+                border: "1px solid rgba(0,0,0,.25)",
+                boxShadow: "0 2px 0 rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.15)",
+              }}
+            >
+              Acessar simulador
+            </a>
+          </Link>
 
-          {/* espaço reservado para o visual/hero da home na próxima etapa */}
-          <div style={{ height: 16 }} />
+          <a
+            href="mailto:contato@radarcrypto.space?subject=[RadarCrypto] Falar%20com%20a%20equipe&body=Olá%2C%20quero%20falar%20sobre..."
+            style={{
+              padding: "10px 16px",
+              borderRadius: 12,
+              fontWeight: 700,
+              background: "rgba(255,255,255,.06)",
+              border: "1px solid rgba(255,255,255,.15)",
+            }}
+          >
+            Fale com a gente
+          </a>
         </div>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
+    </section>
   );
 }
