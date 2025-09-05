@@ -1,21 +1,23 @@
-// pages/_app.js
-import "@styles/globals.css"; // <- arquivo CSS comum (não module)
-import { useRouter } from "next/router";
-import Header from "@components/Header";
-import Footer from "@components/Footer";
+import '@/styles/globals.css';
+import Navbar from '@components/Navbar';
+import Footer from '@components/Footer';
 
 export default function App({ Component, pageProps }) {
-  const router = useRouter();
-  // Oculta a nav apenas no /simulador
-  const showNav = router.pathname !== "/simulador";
+  const shell = {
+    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    background: 'linear-gradient(180deg,#0f1723 0%, #0a1320 100%)',
+    color: '#e6eef5',
+  };
 
   return (
-    <>
-      <Header showNav={showNav} />
-      <main style={{ maxWidth: 1040, margin: "0 auto", padding: "24px 16px" }}>
+    <div style={shell}>
+      <Navbar />
+      <main style={{ flex: 1 }}>
         <Component {...pageProps} />
       </main>
       <Footer />
-    </>
+    </div>
   );
 }
