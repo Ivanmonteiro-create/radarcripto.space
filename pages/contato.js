@@ -1,71 +1,58 @@
-// pages/contato.js
-import Link from "next/link";
+import Navbar from '@components/Navbar';
+import Footer from '@components/Footer';
+import Link from 'next/link';
 
 export default function Contato() {
+  const shell = {
+    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    background: 'linear-gradient(180deg,#0f1723 0%, #0a1320 100%)',
+    color: '#e6eef5',
+  };
   const card = {
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.08)",
+    maxWidth: 880,
+    margin: '36px auto',
+    padding: 24,
     borderRadius: 16,
-    padding: 16,
+    background: 'rgba(17,24,39,.45)',
+    border: '1px solid rgba(255,255,255,.08)',
   };
-
   const input = {
-    width: "100%",
-    padding: "10px 12px",
-    borderRadius: 10,
-    background: "rgba(0,0,0,0.25)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    color: "#e5e7eb",
-    outline: "none",
+    width: '100%', padding: '10px 12px', borderRadius: 10,
+    border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.06)', color: '#e6eef5'
   };
-
-  const btn = (bg) => ({
-    padding: "10px 14px",
-    borderRadius: 10,
-    fontWeight: 600,
-    background: bg,
-    border: "1px solid rgba(0,0,0,0.25)",
-    boxShadow: "0 2px 0 rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.12)",
-  });
+  const row = { display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' };
+  const send = { padding:'10px 14px', borderRadius:10, border:'1px solid rgba(37,211,102,.5)', background:'#25d366', color:'#0b1a12', fontWeight:700 };
+  const ghost= { padding:'10px 14px', borderRadius:10, border:'1px solid rgba(255,255,255,.12)', background:'rgba(255,255,255,.06)', color:'#e6eef5' };
 
   return (
-    <section>
-      <h1 style={{ fontSize: 28, marginBottom: 8 }}>Contato</h1>
-      <p style={{ opacity: .8, marginBottom: 16 }}>
-        Tem uma sugestão, dúvida ou proposta? Envie uma mensagem. 🙂
-      </p>
+    <div style={shell}>
+      <Navbar />
+      <main style={{ flex: 1 }}>
+        <section style={card}>
+          <h2 style={{ marginTop: 0 }}>Contato</h2>
+          <p style={{ opacity: .85 }}>Tem uma sugestão, dúvida ou proposta? Envie uma mensagem. ✉️</p>
 
-      <div style={card}>
-        <form action="mailto:contato@radarcrypto.space" method="post" encType="text/plain">
-          <div style={{ display: "grid", gap: 12 }}>
-            <label>
-              <div style={{ marginBottom: 6, opacity: .8 }}>Nome</div>
-              <input type="text" name="nome" placeholder="Seu nome" style={input} required />
-            </label>
+          <form action="mailto:radar@radarcrypto.space" method="post" encType="text/plain">
+            <label>Nome<div><input name="nome" placeholder="Seu nome" style={input} /></div></label>
+            <div style={{ height: 10 }} />
+            <label>Email<div><input name="email" placeholder="voce@exemplo.com" style={input} /></div></label>
+            <div style={{ height: 10 }} />
+            <label>Mensagem<div><textarea name="mensagem" placeholder="Escreva sua mensagem..." rows={6} style={input} /></div></label>
 
-            <label>
-              <div style={{ marginBottom: 6, opacity: .8 }}>Email</div>
-              <input type="email" name="email" placeholder="voce@exemplo.com" style={input} required />
-            </label>
-
-            <label>
-              <div style={{ marginBottom: 6, opacity: .8 }}>Mensagem</div>
-              <textarea name="mensagem" placeholder="Escreva sua mensagem..." rows={6} style={input} required />
-            </label>
-
-            <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-              <button type="submit" style={btn("linear-gradient(180deg,#16a34a,#15803d)")}>Enviar</button>
-              <Link href="/" legacyBehavior>
-                <a style={btn("rgba(255,255,255,0.06)")}>Voltar ao início</a>
-              </Link>
+            <div style={row}>
+              <button type="submit" style={send}>Enviar</button>
+              <Link href="/"><span style={ghost}>Voltar ao início</span></Link>
             </div>
-          </div>
-        </form>
-      </div>
+          </form>
 
-      <p style={{ fontSize: 12, opacity: .6, marginTop: 10 }}>
-        *Este formulário abre seu app de e-mail (mailto). Depois podemos integrar um backend/serviço (Formspree, Resend etc.).
-      </p>
-    </section>
+          <p style={{ marginTop: 12, opacity: .65, fontSize: 12 }}>
+            *Este formulário abre seu app de e-mail (mailto). Depois podemos integrar um backend/serviço (Formspree, Resend etc.).
+          </p>
+        </section>
+      </main>
+      <Footer />
+    </div>
   );
 }
