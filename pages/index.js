@@ -1,32 +1,25 @@
-// pages/index.js
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import CTAButton from "@/components/CTAButton";
+import CTAButton from '../components/CTAButton';
+
 export default function Home() {
   return (
     <>
       <Header />
+      <main className="container">
+        <section className="hero">
+          <span className="kicker">Simulador de Trading</span>
+          <h1 className="title">RadarCrypto.space</h1>
+          <p className="subtitle">Em construção — Fase 1 (site base online)</p>
 
-      <main className="container" style={{ minHeight: '60vh', display: 'grid', placeItems: 'center' }}>
-        <div style={{ textAlign: 'center' }}>
-          <h1 style={{ fontSize: 36, margin: '8px 0' }}>RadarCrypto.space</h1>
-          <p style={{ fontSize: 18, marginBottom: 12 }}>Simulador de Trading</p>
+          <span className="badge">🚧 Em construção</span>
 
-          <div style={{
-            display: 'inline-block',
-            padding: '8px 14px',
-            borderRadius: 999,
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(255,255,255,0.18)',
-            marginBottom: 10
-          }}>
-            🛠️ Em construção 🛠️
+          <div style={{marginTop:16, display:'flex', gap:12}}>
+            <CTAButton href="#">Acessar simulador</CTAButton>
+            <CTAButton href="/sobre" variant="ghost">Saiba mais</CTAButton>
           </div>
-
-          <p style={{ opacity: 0.85 }}>RadarCrypto.space — Fase 1 (site base online)</p>
-        </div>
+        </section>
       </main>
-
       <Footer />
     </>
   );
