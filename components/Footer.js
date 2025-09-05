@@ -1,14 +1,13 @@
+// components/Footer.js
 export default function Footer() {
   return (
     <footer style={{
-      background: "#111",
-      color: "#aaa",
-      padding: "10px",
-      textAlign: "center",
-      marginTop: "20px",
-      fontSize: "14px"
+      borderTop: '1px solid rgba(255,255,255,0.12)',
+      marginTop: 32
     }}>
-      <p>© {new Date().getFullYear()} RadarCripto.space — Todos os direitos reservados</p>
+      <div className="container" style={{textAlign:'center', opacity: 0.7}}>
+        © {new Date().getFullYear()} RadarCrypto.space — Todos os direitos reservados
+      </div>
     </footer>
-  )
+  );
 }
