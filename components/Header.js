@@ -26,14 +26,7 @@ export default function Header({ showNav = true }) {
         }}
       >
         <Link href="/" legacyBehavior>
-          <a
-            aria-label="Voltar ao início"
-            style={{
-              fontWeight: 700,
-              letterSpacing: ".2px",
-              opacity: .9,
-            }}
-          >
+          <a style={{ fontWeight: 700, letterSpacing: ".2px", opacity: .9 }}>
             RadarCrypto.space
           </a>
         </Link>
