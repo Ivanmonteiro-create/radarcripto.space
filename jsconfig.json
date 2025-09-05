@@ -3,9 +3,7 @@
     "baseUrl": ".",
     "paths": {
       "@components/*": ["components/*"],
-      "@styles/*": ["styles/*"],
-      "@pages/*": ["pages/*"]
+      "@styles/*": ["styles/*"]
     }
-  },
-  "exclude": ["node_modules"]
+  }
 }
