@@ -1,27 +1,15 @@
-/* Estrutura para o footer sempre “encostar” sem sobras */
-html, body, #__next {
-  height: 100%;
-}
-#__next {
-  display: flex;
-  flex-direction: column;
-}
-main {
-  flex: 1 0 auto;
-}
+html, body, #__next { height: 100%; }
+#__next { display: flex; flex-direction: column; }
+main { flex: 1 0 auto; }
 
-/* Ajustes finos de espaçamento globais */
-section:last-of-type {
-  margin-bottom: 0;
-}
+/* Sem espaços extras antes do footer */
+section:last-of-type { margin-bottom: 0; }
 
-/* Fundo do site (já tinha) + leve refinamento */
+/* Fundo e leve tratamento já aplicados */
 body {
   background:
     radial-gradient(800px 400px at 20% 10%, rgba(34, 197, 94, 0.06), transparent 60%),
     radial-gradient(800px 400px at 80% 20%, rgba(59, 130, 246, 0.06), transparent 60%),
     #0f172a;
 }
-* {
-  backdrop-filter: saturate(120%) blur(0.5px);
-}
+* { backdrop-filter: saturate(120%) blur(0.5px); }
