@@ -1,6 +1,4 @@
 // /pages/index.js
-import Link from "next/link";
-
 export default function Home() {
   return (
     <main style={{ maxWidth: 1100, margin: "32px auto", padding: "0 16px" }}>
@@ -35,56 +33,32 @@ export default function Home() {
           style={{
             fontSize: 36,
             lineHeight: 1.2,
-            margin: "0 0 8px 0",
+            margin: "0 0 10px 0",
             color: "#ffffff",
             fontWeight: 800,
           }}
         >
-          Treine trading sem risco
+          Aprenda de verdade sem perder nada.
         </h1>
 
-        <p style={{ opacity: 0.85, marginBottom: 18 }}>
-          Pratique estratégias e gestão de risco num ambiente didático.
-        </p>
-
-        <div
+        <p
           style={{
-            display: "flex",
-            gap: 10,
-            justifyContent: "center",
-            flexWrap: "wrap",
+            fontSize: 20,
+            lineHeight: 1.5,
+            margin: "8px 0 16px 0",
+            color: "#d4ffe1",
+            fontWeight: 700,
+            textShadow: "0 0 12px rgba(22,163,74,0.25)",
           }}
         >
-          <Link
-            href="/simulador"
-            style={{
-              padding: "10px 14px",
-              borderRadius: 10,
-              background: "#16a34a",
-              color: "#08130a",
-              fontWeight: 800,
-            }}
-          >
-            Acessar simulador
-          </Link>
+          Um simulador prático para testar estratégias e evoluir{" "}
+          <span style={{ color: "#16a34a" }}>sem risco</span>.
+        </p>
 
-          <Link
-            href="/contato"
-            style={{
-              padding: "10px 14px",
-              borderRadius: 10,
-              background: "rgba(255,255,255,0.06)",
-              color: "#fff",
-              fontWeight: 600,
-            }}
-          >
-            Fale com a gente
-          </Link>
-        </div>
-
+        {/* selo de status */}
         <div
           style={{
-            marginTop: 14,
+            marginTop: 6,
             display: "inline-block",
             padding: "6px 10px",
             borderRadius: 999,
