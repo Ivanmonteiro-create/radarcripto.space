@@ -1,10 +1,6 @@
 // /components/MarketTicker.js
 import { useEffect, useState } from "react";
 
-/**
- * Ticker simples com preços simulados (variação suave).
- * Por enquanto é mock local; depois trocamos por dados reais.
- */
 const base = [
   { pair: "BTC/USDT", price: 60250, change: +0.4 },
   { pair: "ETH/USDT", price: 2450, change: -0.2 },
@@ -20,7 +16,7 @@ export default function MarketTicker() {
     const id = setInterval(() => {
       setRows((prev) =>
         prev.map((r) => {
-          const drift = r.price * (Math.random() - 0.5) * 0.0008; // ±0.08%
+          const drift = r.price * (Math.random() - 0.5) * 0.0008;
           const price = Math.max(0.0001, r.price + drift);
           const change = ((price - r.price) / r.price) * 100;
           return { ...r, price: Number(price.toFixed(2)), change: Number(change.toFixed(2)) };
@@ -31,13 +27,7 @@ export default function MarketTicker() {
   }, []);
 
   return (
-    <div
-      style={{
-        margin: "24px auto 0",
-        maxWidth: 1100,
-        padding: "0 16px 24px",
-      }}
-    >
+    <div style={{ margin: "18px auto 0", maxWidth: 1180, padding: "0 16px" }}>
       <div
         style={{
           borderRadius: 12,
@@ -46,19 +36,13 @@ export default function MarketTicker() {
           overflow: "hidden",
         }}
       >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr",
-            gap: 0,
-          }}
-        >
-          {rows.map((r) => (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)" }}>
+          {rows.map((r, i) => (
             <div
               key={r.pair}
               style={{
                 padding: "12px 14px",
-                borderRight: "1px solid rgba(255,255,255,0.06)",
+                borderRight: i < rows.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
                 minWidth: 0,
               }}
             >
