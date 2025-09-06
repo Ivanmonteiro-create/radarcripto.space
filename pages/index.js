@@ -1,56 +1,51 @@
 // /pages/index.js
 import HeroBackground from "../components/HeroBackground";
-import MarketTicker from "../components/MarketTicker";
 
 export default function Home() {
   return (
-    <main style={{ maxWidth: 1100, margin: "32px auto", padding: "0 16px" }}>
-      {/* HERO */}
+    <main style={{ maxWidth: 1200, margin: "24px auto 0", padding: "0 16px" }}>
+      {/* HERO: card único, claro e sem “quadro de baixo” */}
       <section
         style={{
           position: "relative",
-          margin: "24px auto",
-          maxWidth: 820,
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 16,
-          padding: "28px 20px 24px",
+          margin: "16px auto 10px",
+          maxWidth: 1080,
+          background: "rgba(255,255,255,0.06)",            // <-- mais CLARO
+          border: "1px solid rgba(255,255,255,0.14)",       // <-- um pouco mais de contraste
+          borderRadius: 20,
+          padding: "48px 36px 42px",
           textAlign: "center",
           overflow: "hidden",
+          boxShadow: "0 12px 40px rgba(0,0,0,0.30)",
         }}
       >
-        <HeroBackground />
+        <HeroBackground />  {/* fundo agora MUITO mais sutil */}
 
-        <div
-          style={{
-            position: "relative",
-            zIndex: 1,
-          }}
-        >
+        <div style={{ position: "relative", zIndex: 1 }}>
           <div
             style={{
               display: "inline-block",
-              padding: "6px 10px",
+              padding: "7px 12px",
               borderRadius: 999,
               border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.04)",
+              background: "rgba(255,255,255,0.05)",
               color: "#cfe5ff",
               fontSize: 12,
               letterSpacing: 1,
-              marginBottom: 10,
+              marginBottom: 14,
+              fontWeight: 700,
             }}
           >
             SIMULADOR DE TRADING
           </div>
 
-          {/* Título com gradiente */}
           <h1
             style={{
-              fontSize: 36,
-              lineHeight: 1.2,
-              margin: "0 0 10px 0",
-              fontWeight: 800,
-              background: "linear-gradient(90deg, #16a34a, #3b82f6)",
+              fontSize: 46,
+              lineHeight: 1.12,
+              margin: "0 0 14px 0",
+              fontWeight: 900,
+              background: "linear-gradient(90deg, #16a34a, #22c55e, #3b82f6)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
             }}
@@ -61,16 +56,19 @@ export default function Home() {
           <p
             style={{
               fontSize: 20,
-              lineHeight: 1.5,
-              margin: "8px 0 16px 0",
-              color: "#e2e8f0",
+              lineHeight: 1.6,
+              margin: "10px 0 22px 0",
+              color: "#e6eef8",  // texto mais claro
               fontWeight: 600,
+              maxWidth: 860,
+              marginLeft: "auto",
+              marginRight: "auto",
             }}
           >
             Um simulador prático para testar estratégias e evoluir{" "}
             <span
               style={{
-                fontWeight: 700,
+                fontWeight: 800,
                 background: "linear-gradient(90deg, #16a34a, #3b82f6)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
@@ -80,14 +78,13 @@ export default function Home() {
             </span>.
           </p>
 
-          {/* Faixa de destaques (pílulas) */}
           <div
             style={{
               display: "flex",
-              gap: 10,
+              gap: 12,
               justifyContent: "center",
               flexWrap: "wrap",
-              marginTop: 12,
+              marginTop: 6,
             }}
           >
             <Badge text="Conta demo — sem corretora" />
@@ -95,26 +92,23 @@ export default function Home() {
             <Badge text="Histórico local no navegador" />
           </div>
 
-          {/* Selo de status */}
           <div
             style={{
-              marginTop: 16,
+              marginTop: 20,
               display: "inline-block",
-              padding: "6px 10px",
+              padding: "6px 12px",
               borderRadius: 999,
               border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.04)",
+              background: "rgba(255,255,255,0.05)",
               fontSize: 12,
-              opacity: 0.9,
+              color: "#dbeafe",
+              opacity: 0.95,
             }}
           >
             🚧 Em construção — Fase 1 (site base online)
           </div>
         </div>
       </section>
-
-      {/* TICKER de mercado (na região inferior da página) */}
-      <MarketTicker />
     </main>
   );
 }
@@ -124,12 +118,13 @@ function Badge({ text }) {
     <span
       style={{
         fontSize: 12,
-        color: "#dbeafe",
-        padding: "6px 10px",
+        color: "#e2eeff",
+        padding: "7px 12px",
         borderRadius: 999,
         border: "1px solid rgba(255,255,255,0.12)",
-        background: "rgba(255,255,255,0.04)",
+        background: "rgba(255,255,255,0.05)",
         whiteSpace: "nowrap",
+        fontWeight: 600,
       }}
     >
       {text}
