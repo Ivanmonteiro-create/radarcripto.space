@@ -1,126 +1,67 @@
 // /components/HeroBackground.js
-import { useEffect, useRef } from "react";
-
-/**
- * Fundo do herói: grid + glow + sparkline suave.
- * Não depende de libs externas.
- */
 export default function HeroBackground() {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const c = canvasRef.current;
-    const ctx = c.getContext("2d");
-    let raf;
-
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
-    const resize = () => {
-      c.width = c.clientWidth * dpr;
-      c.height = c.clientHeight * dpr;
-    };
-    resize();
-    window.addEventListener("resize", resize);
-
-    // Gera pontos para um "sparkline" simples
-    const N = 80;
-    let pts = Array.from({ length: N }, (_, i) => ({
-      x: (i / (N - 1)) * c.width,
-      y: c.height * 0.55 + Math.sin(i * 0.25) * 18 * dpr,
-    }));
-    let t = 0;
-
-    const draw = () => {
-      t += 0.015;
-
-      // fundo transparente
-      ctx.clearRect(0, 0, c.width, c.height);
-
-      // grid
-      ctx.save();
-      ctx.globalAlpha = 0.14;
-      ctx.strokeStyle = "#94a3b8";
-      ctx.lineWidth = 1 * dpr;
-
-      const gap = 40 * dpr;
-      for (let x = (t * 20) % gap; x < c.width; x += gap) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, c.height);
-        ctx.stroke();
-      }
-      for (let y = (t * 12) % gap; y < c.height; y += gap) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(c.width, y);
-        ctx.stroke();
-      }
-      ctx.restore();
-
-      // anima sparkline
-      pts = pts.map((p, i) => ({
-        x: (i / (N - 1)) * c.width,
-        y:
-          c.height * 0.55 +
-          Math.sin(i * 0.25 + t * 1.25) * (16 * dpr) +
-          Math.cos(i * 0.07 + t) * (6 * dpr),
-      }));
-
-      // brilho
-      ctx.save();
-      const grad = ctx.createLinearGradient(0, 0, c.width, 0);
-      grad.addColorStop(0, "#16a34a");
-      grad.addColorStop(1, "#3b82f6");
-      ctx.strokeStyle = grad;
-
-      // glow largo
-      ctx.globalAlpha = 0.25;
-      ctx.lineWidth = 10 * dpr;
-      ctx.beginPath();
-      pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
-      ctx.stroke();
-
-      // linha fina
-      ctx.globalAlpha = 0.9;
-      ctx.lineWidth = 2 * dpr;
-      ctx.beginPath();
-      pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
-      ctx.stroke();
-      ctx.restore();
-
-      raf = requestAnimationFrame(draw);
-    };
-
-    raf = requestAnimationFrame(draw);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
-    };
-  }, []);
-
   return (
-    <div
+    <svg
+      aria-hidden="true"
+      width="100%"
+      height="100%"
+      viewBox="0 0 1200 420"
+      preserveAspectRatio="none"
       style={{
         position: "absolute",
         inset: 0,
-        overflow: "hidden",
-        borderRadius: 16,
+        opacity: 0.55, // controle geral
       }}
-      aria-hidden="true"
     >
-      {/* “vidro” de fundo */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "radial-gradient(1200px 600px at 50% 60%, rgba(16,185,129,0.10), transparent 60%), radial-gradient(1200px 600px at 60% 40%, rgba(59,130,246,0.10), transparent 60%)",
-          filter: "blur(4px)",
-        }}
+      {/* Vinheta suave nas bordas */}
+      <defs>
+        <radialGradient id="fade" cx="50%" cy="50%" r="70%">
+          <stop offset="60%" stopColor="rgba(255,255,255,0)" />
+          <stop offset="100%" stopColor="rgba(0,0,0,0.25)" />
+        </radialGradient>
+        <linearGradient id="curve" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#22c55e" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.35" />
+        </linearGradient>
+      </defs>
+
+      {/* Grid MUITO sutil */}
+      <g opacity="0.12">
+        {Array.from({ length: 24 }).map((_, i) => (
+          <line
+            key={`v-${i}`}
+            x1={(i * 50) + 0.5}
+            y1="0"
+            x2={(i * 50) + 0.5}
+            y2="420"
+            stroke="#9ec5ff"
+            strokeWidth="1"
+          />
+        ))}
+        {Array.from({ length: 9 }).map((_, i) => (
+          <line
+            key={`h-${i}`}
+            x1="0"
+            y1={(i * 48) + 0.5}
+            x2="1200"
+            y2={(i * 48) + 0.5}
+            stroke="#9ec5ff"
+            strokeWidth="1"
+          />
+        ))}
+      </g>
+
+      {/* Curva sutil */}
+      <path
+        d="M-20,320 C180,180 380,260 580,200 C780,140 980,200 1220,130"
+        fill="none"
+        stroke="url(#curve)"
+        strokeWidth="6"
+        style={{ filter: "blur(0.3px)" }}
       />
-      <canvas
-        ref={canvasRef}
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-      />
-    </div>
+
+      {/* vinheta nas bordas, bem leve */}
+      <rect x="0" y="0" width="1200" height="420" fill="url(#fade)" opacity="0.35" />
+    </svg>
   );
 }
