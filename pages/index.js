@@ -29,13 +29,16 @@ export default function Home() {
           SIMULADOR DE TRADING
         </div>
 
+        {/* Título com gradiente */}
         <h1
           style={{
             fontSize: 36,
             lineHeight: 1.2,
             margin: "0 0 10px 0",
-            color: "#ffffff",
             fontWeight: 800,
+            background: "linear-gradient(90deg, #16a34a, #3b82f6)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
           }}
         >
           Aprenda de verdade sem perder nada.
@@ -46,13 +49,21 @@ export default function Home() {
             fontSize: 20,
             lineHeight: 1.5,
             margin: "8px 0 16px 0",
-            color: "#d4ffe1",
-            fontWeight: 700,
-            textShadow: "0 0 12px rgba(22,163,74,0.25)",
+            color: "#e2e8f0",
+            fontWeight: 600,
           }}
         >
           Um simulador prático para testar estratégias e evoluir{" "}
-          <span style={{ color: "#16a34a" }}>sem risco</span>.
+          <span
+            style={{
+              fontWeight: 700,
+              background: "linear-gradient(90deg, #16a34a, #3b82f6)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            sem risco
+          </span>.
         </p>
 
         {/* selo de status */}
