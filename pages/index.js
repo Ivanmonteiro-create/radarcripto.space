@@ -4,19 +4,20 @@ import MarketTicker from "../components/MarketTicker";
 
 export default function Home() {
   return (
-    <main style={{ maxWidth: 1180, margin: "24px auto 0", padding: "0 16px" }}>
-      {/* HERO – maior e com menos espaço externo */}
+    <main style={{ maxWidth: 1200, margin: "24px auto 0", padding: "0 16px" }}>
+      {/* HERO – volta ao estilo anterior, porém MAIOR */}
       <section
         style={{
           position: "relative",
-          margin: "12px auto 8px",
-          maxWidth: 980,                // ↑ largura maior
-          background: "rgba(255,255,255,0.045)",
+          margin: "16px auto 10px",
+          maxWidth: 1080,                 // ↑ mais largo
+          background: "rgba(255,255,255,0.035)", // volta ao look anterior (mais sutil)
           border: "1px solid rgba(255,255,255,0.10)",
-          borderRadius: 18,
-          padding: "40px 28px 34px",    // ↑ mais altura/área interna
+          borderRadius: 20,
+          padding: "48px 36px 42px",      // ↑ mais alto
           textAlign: "center",
           overflow: "hidden",
+          boxShadow: "0 12px 40px rgba(0,0,0,0.35)", // leve profundidade
         }}
       >
         <HeroBackground />
@@ -25,14 +26,15 @@ export default function Home() {
           <div
             style={{
               display: "inline-block",
-              padding: "6px 10px",
+              padding: "7px 12px",
               borderRadius: 999,
               border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.04)",
+              background: "rgba(255,255,255,0.045)",
               color: "#cfe5ff",
               fontSize: 12,
               letterSpacing: 1,
-              marginBottom: 12,
+              marginBottom: 14,
+              fontWeight: 700,
             }}
           >
             SIMULADOR DE TRADING
@@ -40,11 +42,11 @@ export default function Home() {
 
           <h1
             style={{
-              fontSize: 42,              // ↑ título maior
-              lineHeight: 1.15,
-              margin: "0 0 12px 0",
-              fontWeight: 800,
-              background: "linear-gradient(90deg, #16a34a, #3b82f6)",
+              fontSize: 48,                // ↑ título maior
+              lineHeight: 1.12,
+              margin: "0 0 14px 0",
+              fontWeight: 900,
+              background: "linear-gradient(90deg, #16a34a, #22c55e, #3b82f6)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
             }}
@@ -55,11 +57,11 @@ export default function Home() {
           <p
             style={{
               fontSize: 22,
-              lineHeight: 1.55,
-              margin: "8px 0 18px 0",
+              lineHeight: 1.6,
+              margin: "10px 0 22px 0",
               color: "#e2e8f0",
               fontWeight: 600,
-              maxWidth: 820,
+              maxWidth: 860,
               marginLeft: "auto",
               marginRight: "auto",
             }}
@@ -80,10 +82,10 @@ export default function Home() {
           <div
             style={{
               display: "flex",
-              gap: 10,
+              gap: 12,
               justifyContent: "center",
               flexWrap: "wrap",
-              marginTop: 14,
+              marginTop: 6,
             }}
           >
             <Badge text="Conta demo — sem corretora" />
@@ -93,13 +95,14 @@ export default function Home() {
 
           <div
             style={{
-              marginTop: 18,
+              marginTop: 20,
               display: "inline-block",
-              padding: "6px 10px",
+              padding: "6px 12px",
               borderRadius: 999,
               border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.04)",
+              background: "rgba(255,255,255,0.045)",
               fontSize: 12,
+              color: "#dbeafe",
               opacity: 0.95,
             }}
           >
@@ -108,7 +111,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* TICKER – encosta melhor no rodapé (sem espaço sobrando) */}
+      {/* Ticker encostando no rodapé */}
       <MarketTicker />
     </main>
   );
@@ -120,11 +123,12 @@ function Badge({ text }) {
       style={{
         fontSize: 12,
         color: "#dbeafe",
-        padding: "6px 10px",
+        padding: "7px 12px",
         borderRadius: 999,
         border: "1px solid rgba(255,255,255,0.12)",
-        background: "rgba(255,255,255,0.04)",
+        background: "rgba(255,255,255,0.045)",
         whiteSpace: "nowrap",
+        fontWeight: 600,
       }}
     >
       {text}
