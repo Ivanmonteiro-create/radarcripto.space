@@ -1,17 +1,17 @@
 // app/simulador/page.jsx
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 /* =========================================================
-   SIMULADOR PRO
-   - Sidebar (passos)
-   - Gráfico TradingView (candles, tema dark)
+   SIMULADOR PRO (sem sidebar)
+   - Topo com botão "Voltar ao Início"
+   - Gráfico TradingView maior ao centro
    - Conta demo + Comprar/Vender + P&L + Histórico
    - Estilos escopados (.pro-sim) -> Home não é afetada
 ========================================================= */
 
-// Ativos disponíveis
 const COINS = [
   { id: "bitcoin", label: "Bitcoin (BTC)" },
   { id: "ethereum", label: "Ethereum (ETH)" },
@@ -23,7 +23,6 @@ const COINS = [
   { id: "dogecoin", label: "Dogecoin (DOGE)" },
 ];
 
-// Mapeia para símbolos do TradingView (pares USDT na Binance)
 const TV_SYMBOLS = {
   bitcoin: "BINANCE:BTCUSDT",
   ethereum: "BINANCE:ETHUSDT",
@@ -35,7 +34,6 @@ const TV_SYMBOLS = {
   dogecoin: "BINANCE:DOGEUSDT",
 };
 
-// Formatador USD
 const fmtUSD = (v) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
     .format(Number.isFinite(v) ? v : 0);
@@ -46,16 +44,14 @@ export default function SimuladorPro() {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
 
-  // Conta demo
   const [saldo, setSaldo] = useState(10000);
   const [qtd, setQtd] = useState(0);
   const [tamanhoOrdem, setTamanhoOrdem] = useState(100);
   const [historico, setHistorico] = useState([]);
 
-  // ==== Preço ao vivo (CoinGecko) ====
+  // ===== preço ao vivo (CoinGecko) =====
   useEffect(() => {
     let off = false;
-
     async function fetchPreco() {
       setCarregando(true);
       setErro("");
@@ -74,7 +70,6 @@ export default function SimuladorPro() {
         if (!off) setCarregando(false);
       }
     }
-
     fetchPreco();
     const id = setInterval(fetchPreco, 15000);
     return () => {
@@ -86,7 +81,7 @@ export default function SimuladorPro() {
   const valorPosicao = useMemo(() => qtd * preco, [qtd, preco]);
   const pnl = useMemo(() => valorPosicao, [valorPosicao]);
 
-  // ==== Ordens ====
+  // ===== ordens =====
   function comprar() {
     if (preco <= 0 || tamanhoOrdem <= 0 || tamanhoOrdem > saldo) return;
     const q = tamanhoOrdem / preco;
@@ -97,7 +92,6 @@ export default function SimuladorPro() {
       ...h,
     ]);
   }
-
   function vender() {
     if (qtd <= 0 || preco <= 0) return;
     const valor = qtd * preco;
@@ -108,7 +102,6 @@ export default function SimuladorPro() {
     ]);
     setQtd(0);
   }
-
   function resetar() {
     if (!confirm("Deseja resetar saldo, posição e histórico?")) return;
     setSaldo(10000);
@@ -116,11 +109,10 @@ export default function SimuladorPro() {
     setHistorico([]);
   }
 
-  // ==== TradingView (widget oficial) ====
+  // ===== TradingView =====
   const chartRef = useRef(null);
   const scriptLoadedRef = useRef(false);
 
-  // carrega script tv.js uma vez
   useEffect(() => {
     if (scriptLoadedRef.current) return;
     const s = document.createElement("script");
@@ -133,7 +125,6 @@ export default function SimuladorPro() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // re-renderiza ao trocar de moeda
   useEffect(() => {
     if (scriptLoadedRef.current) renderWidget();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -141,16 +132,15 @@ export default function SimuladorPro() {
 
   function renderWidget() {
     if (!window.TradingView || !chartRef.current) return;
-    chartRef.current.innerHTML = ""; // limpa
-
+    chartRef.current.innerHTML = "";
     /* global TradingView */
     new window.TradingView.widget({
       autosize: true,
       symbol: TV_SYMBOLS[moeda] || "BINANCE:BTCUSDT",
-      interval: "1",            // 1 minuto (mais “dinâmico”)
+      interval: "1",             // 1m para dinâmica
       timezone: "Etc/UTC",
       theme: "dark",
-      style: "1",               // candles
+      style: "1",                // candles
       locale: "br",
       toolbar_bg: "#0b1220",
       hide_top_toolbar: false,
@@ -160,26 +150,23 @@ export default function SimuladorPro() {
     });
   }
 
-  // ==== UI ====
+  // ===== UI =====
   return (
     <div className="pro-sim min-h-screen w-full">
       <div className="mx-auto max-w-[1400px] px-4 py-6">
         {/* topo */}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-          <div>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="btn secondary" style={{ width: "auto", padding: ".55rem .9rem" }}>
+              Voltar ao Início
+            </Link>
             <h1 className="text-2xl font-extrabold tracking-tight text-white">
               Simulador de Trading
             </h1>
-            <p className="muted">
-              Treine estratégias com dados ao vivo — sem risco real.
-            </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <select
-              value={moeda}
-              onChange={(e) => setMoeda(e.target.value)}
-            >
+            <select value={moeda} onChange={(e) => setMoeda(e.target.value)}>
               {COINS.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.label}
@@ -192,53 +179,27 @@ export default function SimuladorPro() {
           </div>
         </div>
 
-        {/* GRID principal: sidebar | chart | painel */}
-        <div className="sim-grid">
-          {/* ==== Sidebar (passos) ==== */}
-          <aside className="card sidebar">
-            <div className="step">
-              <div className="dot" />
-              <div>
-                <div className="title">Crie uma conta</div>
-                <div className="desc">Use o simulador livremente.</div>
-              </div>
-            </div>
-            <div className="step">
-              <div className="dot" />
-              <div>
-                <div className="title">Escolha um ativo</div>
-                <div className="desc">BTC, ETH, SOL, e mais…</div>
-              </div>
-            </div>
-            <div className="step">
-              <div className="dot" />
-              <div>
-                <div className="title">Faça sua previsão</div>
-                <div className="desc">Compre ou venda conforme sua análise.</div>
-              </div>
-            </div>
-            <div className="step">
-              <div className="dot" />
-              <div>
-                <div className="title">Acompanhe P&L</div>
-                <div className="desc">Veja ganhos/perdas em tempo real.</div>
-              </div>
-            </div>
-            <div className="step">
-              <div className="dot" />
-              <div>
-                <div className="title">Estude o gráfico</div>
-                <div className="desc">Use candles, EMA, RSI e mais.</div>
-              </div>
-            </div>
-          </aside>
+        {/* grid principal: gráfico grande | painel */}
+        <div
+          className="sim-grid"
+          style={{
+            // força 2 colunas em telas grandes (gráfico | painel)
+            gridTemplateColumns: "1fr",
+          }}
+        >
+          {/* em >=1024px vira 2 colunas */}
+          <style jsx>{`
+            @media (min-width: 1024px) {
+              .sim-grid {
+                grid-template-columns: 1fr 360px !important;
+              }
+            }
+          `}</style>
 
-          {/* ==== Gráfico ==== */}
+          {/* gráfico (MAIOR) */}
           <section className="card chart-wrap">
             <div className="chart-head">
-              <span>
-                Gráfico — {COINS.find((c) => c.id === moeda)?.label}
-              </span>
+              <span>Gráfico — {COINS.find((c) => c.id === moeda)?.label}</span>
               <span className="chip">
                 {carregando ? "Atualizando…" : fmtUSD(preco)}
               </span>
@@ -247,12 +208,12 @@ export default function SimuladorPro() {
               id="tradingview_chart_container"
               ref={chartRef}
               className="chart-box"
+              style={{ height: 620 }}
             />
           </section>
 
-          {/* ==== Painel direito (conta + ações) ==== */}
+          {/* painel direito */}
           <aside className="card panel">
-            {/* Conta */}
             <div className="section-title">Sua conta (demo)</div>
             <div className="stat">
               <span className="muted">Saldo</span>
@@ -271,7 +232,6 @@ export default function SimuladorPro() {
               <strong>{fmtUSD(pnl)}</strong>
             </div>
 
-            {/* Ações */}
             <div className="section-title" style={{ marginTop: "1rem" }}>
               Ações
             </div>
@@ -289,7 +249,10 @@ export default function SimuladorPro() {
               placeholder="100"
               style={{ marginTop: ".35rem" }}
             />
-            <div className="muted" style={{ textAlign: "right", fontSize: ".8rem", margin: ".35rem 0 1rem" }}>
+            <div
+              className="muted"
+              style={{ textAlign: "right", fontSize: ".8rem", margin: ".35rem 0 1rem" }}
+            >
               ≈ {(tamanhoOrdem / (preco || 1)).toFixed(6)}{" "}
               {COINS.find((c) => c.id === moeda)?.label
                 .split(" ")[1]
@@ -329,7 +292,7 @@ export default function SimuladorPro() {
           </aside>
         </div>
 
-        {/* ==== Histórico ==== */}
+        {/* histórico */}
         <div className="card" style={{ marginTop: "1rem", padding: "1rem" }}>
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white">
@@ -367,7 +330,12 @@ export default function SimuladorPro() {
                   {historico.map((h, i) => (
                     <tr key={i}>
                       <td>{new Date(h.data).toLocaleString()}</td>
-                      <td style={{ color: h.tipo === "Compra" ? "#86efac" : "#fca5a5", fontWeight: 700 }}>
+                      <td
+                        style={{
+                          color: h.tipo === "Compra" ? "#86efac" : "#fca5a5",
+                          fontWeight: 700,
+                        }}
+                      >
                         {h.tipo}
                       </td>
                       <td>{COINS.find((c) => c.id === h.moeda)?.label || h.moeda}</td>
@@ -382,7 +350,6 @@ export default function SimuladorPro() {
           )}
         </div>
 
-        {/* rodapé pequeno do simulador */}
         <div className="muted" style={{ fontSize: ".8rem", marginTop: ".75rem" }}>
           Este simulador é apenas educacional. Não constitui recomendação de investimento. Os dados podem sofrer atrasos.
         </div>
