@@ -3,12 +3,6 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-/*  SIMULADOR PRO — fullscreen
-    - Home volta escura via globals.css
-    - Esta tela usa 100vh e trava a rolagem do body
-    - Gráfico ocupa o máximo; painel tem histórico com rolagem interna
-*/
-
 const COINS = [
   { id: "bitcoin", label: "Bitcoin (BTC)" },
   { id: "ethereum", label: "Ethereum (ETH)" },
@@ -46,11 +40,11 @@ export default function SimuladorPro() {
   const [tamanhoOrdem, setTamanhoOrdem] = useState(100);
   const [historico, setHistorico] = useState([]);
 
-  // trava rolagem do body quando esta tela está aberta
+  // trava a rolagem global enquanto o simulador está aberto
   useEffect(() => {
-    const { overflow } = document.body.style;
+    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = overflow; };
+    return () => (document.body.style.overflow = prev);
   }, []);
 
   // preço ao vivo
@@ -140,38 +134,33 @@ export default function SimuladorPro() {
     });
   }
 
-  // alturas: cabeçalho 72px; conteúdo ocupa o restante
-  const HEADER_H = 72;
+  const HEADER_H = 56; // topo compacto
 
   return (
     <div className="pro-sim" style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* topo */}
-      <div className="mx-auto w-full max-w-[1400px]" style={{ padding: "1rem .85rem 0" }}>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      {/* Topo enxuto, sem padding alto */}
+      <div className="mx-auto w-full max-w-[1400px]" style={{ padding: "0 .85rem" }}>
+        <div className="flex flex-wrap items-center justify-between gap-3" style={{ height: HEADER_H }}>
           <div className="flex items-center gap-3">
-            <Link href="/" className="btn secondary" style={{ width: "auto", padding: ".55rem .9rem" }}>
+            <Link href="/" className="btn secondary" style={{ width: "auto", padding: ".45rem .8rem" }}>
               Voltar ao Início
             </Link>
-            <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: "#fff" }}>
-              Simulador de Trading
-            </h1>
+            <h1 className="text-xl font-extrabold" style={{ color: "#fff" }}>Simulador de Trading</h1>
           </div>
           <div className="flex items-center gap-3">
             <select value={moeda} onChange={(e) => setMoeda(e.target.value)} style={{ width: 220 }}>
-              {COINS.map((c) => (
-                <option key={c.id} value={c.id}>{c.label}</option>
-              ))}
+              {COINS.map((c) => (<option key={c.id} value={c.id}>{c.label}</option>))}
             </select>
             <button className="btn secondary" onClick={resetar}>Resetar</button>
           </div>
         </div>
       </div>
 
-      {/* conteúdo em tela cheia (sem rolagem da página) */}
+      {/* Conteúdo em tela cheia sem “respiro” superior */}
       <div className="mx-auto w-full max-w-[1400px] px-4" style={{ height: `calc(100vh - ${HEADER_H}px)` }}>
         <div className="sim-grid" style={{ height: "100%" }}>
-          {/* gráfico ocupa toda a coluna esquerda */}
-          <section className="card chart-wrap" style={{ minHeight: 0, display: "flex", flexDirection: "column" }}>
+          {/* Gráfico */}
+          <section className="card" style={{ minHeight: 0, display: "flex", flexDirection: "column" }}>
             <div className="chart-head">
               <span>Gráfico — {COINS.find((c) => c.id === moeda)?.label}</span>
               <span className="chip">{carregando ? "Atualizando…" : fmtUSD(preco)}</span>
@@ -179,15 +168,15 @@ export default function SimuladorPro() {
             <div id="tradingview_chart_container" ref={chartRef} className="chart-box" style={{ minHeight: 0, flex: 1 }} />
           </section>
 
-          {/* painel direito com histórico interno */}
+          {/* Painel */}
           <aside className="card panel" style={{ minHeight: 0 }}>
             <div className="section-title">Sua conta (demo)</div>
             <div className="stat"><span className="muted">Saldo</span><strong className="strong">{fmtUSD(saldo)}</strong></div>
-            <div className="stat"><span className="muted">Quantidade</span><span className="strong" style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{qtd.toFixed(6)}</span></div>
-            <div className="stat"><span className="muted">Valor da posição</span><span className="strong">{fmtUSD(qtd * preco)}</span></div>
-            <div className={`pnl-pos ${pnl >= 0 ? "g" : "r"}`}><span>P&L (não realizado)</span><strong>{fmtUSD(pnl)}</strong></div>
+            <div className="stat"><span className="muted">Quantidade</span><span className="strong" style={{ fontFamily:"ui-monospace, Menlo, monospace" }}>{qtd.toFixed(6)}</span></div>
+            <div className="stat"><span className="muted">Valor da posição</span><span className="strong">{fmtUSD(qtd*preco)}</span></div>
+            <div className={`pnl-pos ${pnl>=0?"g":"r"}`}><span>P&L (não realizado)</span><strong>{fmtUSD(pnl)}</strong></div>
 
-            <div className="section-title" style={{ marginTop: "1rem" }}>Ações</div>
+            <div className="section-title" style={{ marginTop: ".9rem" }}>Ações</div>
             <label className="muted" style={{ fontSize: ".9rem" }}>Tamanho da ordem (USDT)</label>
             <input
               type="number" min={10} step={10} value={tamanhoOrdem}
@@ -200,14 +189,12 @@ export default function SimuladorPro() {
             </div>
 
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap: ".6rem" }}>
-              <button className="btn buy" onClick={comprar} disabled={preco<=0 || tamanhoOrdem<=0 || tamanhoOrdem>saldo}
-                title={tamanhoOrdem>saldo?"Saldo insuficiente":tamanhoOrdem<=0?"Informe um valor > 0":""}>Comprar</button>
-              <button className="btn sell" onClick={vender} disabled={qtd<=0} title={qtd<=0?"Sem posição para vender":""}>Vender</button>
+              <button className="btn buy" onClick={comprar} disabled={preco<=0 || tamanhoOrdem<=0 || tamanhoOrdem>saldo}>Comprar</button>
+              <button className="btn sell" onClick={vender} disabled={qtd<=0}>Vender</button>
             </div>
 
-            {erro && <p className="muted" style={{ fontSize: ".8rem", marginTop: ".8rem" }}>{erro} — tente novamente em instantes.</p>}
+            {erro && <p className="muted" style={{ fontSize: ".8rem", marginTop: ".8rem" }}>{erro}</p>}
 
-            {/* HISTÓRICO dentro do painel (rolagem própria) */}
             <div className="section-title" style={{ marginTop: "1rem" }}>Histórico de operações</div>
             <div style={{ overflow: "auto", border: "1px solid var(--stroke)", borderRadius: 10, flex: 1, minHeight: 120 }}>
               {historico.length === 0 ? (
@@ -215,7 +202,7 @@ export default function SimuladorPro() {
                   Sem operações por enquanto. Faça uma compra ou venda para começar.
                 </div>
               ) : (
-                <table className="table" style={{ width:"100%" }}>
+                <table className="table">
                   <thead>
                     <tr><th>Data</th><th>Tipo</th><th>Moeda</th><th>Preço</th><th>Qtd</th><th>Valor</th></tr>
                   </thead>
@@ -225,9 +212,9 @@ export default function SimuladorPro() {
                         <td>{new Date(h.data).toLocaleString()}</td>
                         <td style={{ color: h.tipo==="Compra" ? "#86efac" : "#fca5a5", fontWeight:700 }}>{h.tipo}</td>
                         <td>{COINS.find(c=>c.id===h.moeda)?.label || h.moeda}</td>
-                        <td style={{ fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace" }}>{fmtUSD(h.preco)}</td>
-                        <td style={{ fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace" }}>{h.qtd.toFixed(6)}</td>
-                        <td style={{ fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace" }}>{fmtUSD(h.qtd*h.preco)}</td>
+                        <td style={{ fontFamily:"ui-monospace, Menlo, monospace" }}>{fmtUSD(h.preco)}</td>
+                        <td style={{ fontFamily:"ui-monospace, Menlo, monospace" }}>{h.qtd.toFixed(6)}</td>
+                        <td style={{ fontFamily:"ui-monospace, Menlo, monospace" }}>{fmtUSD(h.qtd*h.preco)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -236,8 +223,7 @@ export default function SimuladorPro() {
             </div>
 
             {historico.length>0 && (
-              <button className="btn secondary" style={{ marginTop: ".6rem", width:"100%", padding:".45rem .8rem", fontWeight:600 }}
-                onClick={()=>setHistorico([])}>
+              <button className="btn secondary" style={{ marginTop: ".6rem" }} onClick={()=>setHistorico([])}>
                 Limpar histórico
               </button>
             )}
