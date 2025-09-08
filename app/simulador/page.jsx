@@ -90,7 +90,7 @@ export default function Simulador() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-gray-900 text-white antialiased isolate">
+    <div className="sim-page min-h-screen w-full">
       <div className="mx-auto max-w-7xl px-4 py-10">
         {/* Header */}
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
@@ -207,7 +207,7 @@ export default function Simulador() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={comprar}
-                className="rounded-2xl bg-green-600 px-4 py-3 font-semibold text-white shadow-md hover:bg-green-500 disabled:opacity-50"
+                className="btn rounded-2xl bg-green-600 px-4 py-3 font-semibold text-white shadow-md hover:bg-green-500 disabled:opacity-50"
                 disabled={preco <= 0 || tamanhoOrdem <= 0 || tamanhoOrdem > saldo}
                 title={
                   tamanhoOrdem > saldo
@@ -221,7 +221,7 @@ export default function Simulador() {
               </button>
               <button
                 onClick={vender}
-                className="rounded-2xl bg-red-600 px-4 py-3 font-semibold text-white shadow-md hover:bg-red-500 disabled:opacity-50"
+                className="btn rounded-2xl bg-red-600 px-4 py-3 font-semibold text-white shadow-md hover:bg-red-500 disabled:opacity-50"
                 disabled={qtd <= 0}
                 title={qtd <= 0 ? "Sem posição para vender" : ""}
               >
