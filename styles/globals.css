@@ -1,19 +1,47 @@
-html, body, #__next { height: 100%; }
-#__next { display: flex; flex-direction: column; }
-main { flex: 1 0 auto; }
+/* ==== Tailwind ==== */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* Rodapé encostado, sem faixa vazia */
-section:last-of-type { margin-bottom: 0; }
-
-/* Fundo do site */
-body {
-  background:
-    radial-gradient(800px 400px at 20% 10%, rgba(34, 197, 94, 0.05), transparent 60%),
-    radial-gradient(800px 400px at 80% 20%, rgba(59, 130, 246, 0.045), transparent 60%),
-    #0f172a;
+/* -------------------------------------------------------
+   Escopo visual do simulador (/app/simulador)
+   - “sim-page” é aplicado no container raiz do page.jsx
+   - Garante contraste mesmo que a Home tenha outro tema
+-------------------------------------------------------- */
+.sim-page {
+  background: #111827; /* gray-900 */
+  color: #f3f4f6 !important; /* gray-100 */
 }
 
-/* Rodapé mais legível em telas escuras */
-footer, .footer {
-  color: #a8b3c7;
+/* tipografia e textos */
+.sim-page h1,
+.sim-page h2,
+.sim-page h3,
+.sim-page p,
+.sim-page span,
+.sim-page td,
+.sim-page th,
+.sim-page label,
+.sim-page small {
+  color: #e5e7eb !important; /* gray-200 */
+}
+
+/* inputs e selects */
+.sim-page input,
+.sim-page select,
+.sim-page textarea {
+  background: #1f2937;       /* gray-800 */
+  color: #f3f4f6;            /* gray-100 */
+  border: 1px solid #374151; /* gray-700 */
+}
+
+/* botões – deixam mais destaque ainda */
+.sim-page .btn {
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(0,0,0,.25);
+}
+
+/* tabela */
+.sim-page table thead {
+  background: rgba(31, 41, 55, 0.6); /* gray-800/60 */
 }
