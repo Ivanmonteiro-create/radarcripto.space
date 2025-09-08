@@ -41,7 +41,7 @@ function Toast({ msg, type = "success", show }) {
   );
 }
 
-/* ========= TradingView Chart (com fallback) ========= */
+/* ========= TradingView Chart (altura fixa + fallback) ========= */
 function TradingViewChart({ symbol = "BINANCE:BTCUSDT", interval = "5", fullscreen }) {
   const containerRef = useRef(null);
   const widgetRef = useRef(null);
@@ -49,12 +49,23 @@ function TradingViewChart({ symbol = "BINANCE:BTCUSDT", interval = "5", fullscre
   const [mode, setMode] = useState("loading"); // loading | tv | iframe | error
   const containerId = useMemo(() => `tv-container-${genId()}`, []);
 
+  // define altura do container em px
+  const setContainerHeight = () => {
+    if (!containerRef.current) return;
+    const vh = Math.max(window.innerHeight, 600);
+    const px = Math.round(vh * (fullscreen ? 0.82 : 0.68));
+    containerRef.current.style.height = `${px}px`;
+    containerRef.current.style.minHeight = `${px}px`;
+    containerRef.current.style.width = "100%";
+    containerRef.current.style.position = "relative";
+  };
+
   useEffect(() => {
-    let timeoutId;
+    let timeoutId, resizeId;
 
     function startWidget() {
       try {
-        containerRef.current.style.minHeight = fullscreen ? "78vh" : "46vh";
+        setContainerHeight();
         widgetRef.current = new window.TradingView.widget({
           autosize: true,
           symbol,
@@ -68,6 +79,8 @@ function TradingViewChart({ symbol = "BINANCE:BTCUSDT", interval = "5", fullscre
           allow_symbol_change: false,
           container_id: containerId,
         });
+        // reajusta em resize
+        resizeId = window.addEventListener("resize", setContainerHeight);
         setMode("tv");
       } catch (e) {
         console.error("TradingView init error:", e);
@@ -77,6 +90,7 @@ function TradingViewChart({ symbol = "BINANCE:BTCUSDT", interval = "5", fullscre
 
     function ensureTv() {
       if (typeof window === "undefined") return;
+      setContainerHeight();
       if (window.TradingView?.widget) {
         startWidget();
         return;
@@ -91,7 +105,6 @@ function TradingViewChart({ symbol = "BINANCE:BTCUSDT", interval = "5", fullscre
         s.onerror = () => setMode("iframe");
         document.body.appendChild(s);
       } else {
-        // aguarda ficar disponível
         const check = setInterval(() => {
           if (window.TradingView?.widget) {
             clearInterval(check);
@@ -114,6 +127,7 @@ function TradingViewChart({ symbol = "BINANCE:BTCUSDT", interval = "5", fullscre
       } catch {}
       widgetRef.current = null;
       clearTimeout(timeoutId);
+      if (resizeId) window.removeEventListener("resize", setContainerHeight);
     };
   }, [symbol, interval, fullscreen, containerId]);
 
@@ -136,10 +150,10 @@ function TradingViewChart({ symbol = "BINANCE:BTCUSDT", interval = "5", fullscre
     <div
       id={containerId}
       ref={containerRef}
-      className={`w-full ${fullscreen ? "h-[78vh]" : "h-[46vh]"} rounded-xl overflow-hidden bg-slate-900/60 border border-slate-700`}
+      className="w-full rounded-xl overflow-hidden bg-slate-900/60 border border-slate-700"
     >
       {mode === "loading" && (
-        <div className="h-full grid place-items-center text-slate-300 text-sm">Carregando gráfico…</div>
+        <div className="h-[320px] grid place-items-center text-slate-300 text-sm">Carregando gráfico…</div>
       )}
       {mode === "iframe" && (
         <iframe
@@ -152,7 +166,7 @@ function TradingViewChart({ symbol = "BINANCE:BTCUSDT", interval = "5", fullscre
         />
       )}
       {mode === "error" && (
-        <div className="h-full grid place-items-center text-rose-300 text-sm">
+        <div className="h-[320px] grid place-items-center text-rose-300 text-sm">
           Não foi possível iniciar o gráfico.
         </div>
       )}
@@ -179,7 +193,7 @@ export default function SimuladorPage() {
 
   const [history, setHistory] = useState([]);
 
-  // preço simulado só para P&L (o gráfico mostra o real via TV)
+  // preço simulado só para P&L
   const [mockPrice, setMockPrice] = useState(112000.0);
   useEffect(() => {
     const id = setInterval(
@@ -191,6 +205,7 @@ export default function SimuladorPage() {
   const unrealized = useMemo(() => mockPrice * qty - positionValue, [mockPrice, qty, positionValue]);
 
   // helpers
+  const fmt = fmtUSD;
   const notify = (msg, type = "success") => {
     setToast({ msg, type, show: true });
     setTimeout(() => setToast((t) => ({ ...t, show: false })), 1600);
@@ -222,7 +237,7 @@ export default function SimuladorPage() {
       const realized = sellQty * (price - avg);
       newPV -= avg * sellQty;
 
-      notify(realized >= 0 ? `Venda realizada (+${fmtUSD(realized)})` : `Venda realizada (${fmtUSD(realized)})`);
+      notify(realized >= 0 ? `Venda realizada (+${fmt(realized)})` : `Venda realizada (${fmt(realized)})`);
     }
 
     setBalance(Number(newBal.toFixed(2)));
@@ -253,7 +268,7 @@ export default function SimuladorPage() {
     <div className="min-h-[100dvh] bg-slate-950 text-slate-100">
       <Toast show={toast.show} msg={toast.msg} type={toast.type} />
 
-      {/* Topo fixo sem faixa branca */}
+      {/* Topo fixo preenchendo sem faixa */}
       <header className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
           <Link
@@ -375,8 +390,8 @@ export default function SimuladorPage() {
                       <span className={h.side === "Compra" ? "text-emerald-400" : "text-rose-400"}>
                         {h.side}
                       </span>
-                      <span className="text-slate-300">{fmtUSD(h.price)}</span>
-                      <span className="text-slate-400">{fmtUSD(h.amount)}</span>
+                      <span className="text-slate-300">{fmt(h.price)}</span>
+                      <span className="text-slate-400">{fmt(h.amount)}</span>
                     </div>
                   ))
                 )}
@@ -389,12 +404,12 @@ export default function SimuladorPage() {
         <aside className="space-y-4">
           <div className="rounded-2xl bg-slate-900/60 border border-slate-700 p-4">
             <h3 className="font-semibold text-slate-100 mb-2">Sua conta (demo)</h3>
-            <StatRow label="Saldo" value={fmtUSD(balance)} />
+            <StatRow label="Saldo" value={fmt(balance)} />
             <StatRow label="Quantidade" value={qty.toFixed(8)} />
-            <StatRow label="Valor da posição" value={fmtUSD(positionValue)} />
+            <StatRow label="Valor da posição" value={fmt(positionValue)} />
             <StatRow
               label="P&L (não realizado)"
-              value={`${unrealized >= 0 ? "+" : ""}${fmtUSD(unrealized)}`}
+              value={`${unrealized >= 0 ? "+" : ""}${fmt(unrealized)}`}
               accent={unrealized >= 0 ? "text-emerald-400" : "text-rose-400"}
             />
           </div>
