@@ -25,6 +25,14 @@ const TV_SYMBOLS = {
   dogecoin: "BINANCE:DOGEUSDT",
 };
 
+// estudos comuns do TradingView (códigos oficiais começam com "STD;")
+const ALL_STUDIES = [
+  { code: "STD;RSI", label: "RSI" },
+  { code: "STD;MACD", label: "MACD" },
+  { code: "STD;EMA", label: "EMA" },
+  { code: "STD;Bollinger Bands", label: "BB" },
+];
+
 const fmtUSD = (v) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
     .format(Number.isFinite(v) ? v : 0);
@@ -40,7 +48,9 @@ export default function SimuladorPro() {
   const [tamanhoOrdem, setTamanhoOrdem] = useState(100);
   const [historico, setHistorico] = useState([]);
 
-  // trava a rolagem global enquanto o simulador está aberto
+  const [studies, setStudies] = useState(["STD;EMA", "STD;RSI"]); // selecionados
+
+  // trava rolagem global enquanto o simulador está aberto
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -75,7 +85,6 @@ export default function SimuladorPro() {
   const valorPosicao = useMemo(() => qtd * preco, [qtd, preco]);
   const pnl = useMemo(() => valorPosicao, [valorPosicao]);
 
-  // ordens
   function comprar() {
     if (preco <= 0 || tamanhoOrdem <= 0 || tamanhoOrdem > saldo) return;
     const q = tamanhoOrdem / preco;
@@ -113,7 +122,7 @@ export default function SimuladorPro() {
     document.body.appendChild(s);
   }, []);
 
-  useEffect(() => { if (scriptLoadedRef.current) renderWidget(); }, [moeda]);
+  useEffect(() => { if (scriptLoadedRef.current) renderWidget(); }, [moeda, studies]);
 
   function renderWidget() {
     if (!window.TradingView || !chartRef.current) return;
@@ -130,45 +139,56 @@ export default function SimuladorPro() {
       hide_top_toolbar: false,
       hide_legend: false,
       container_id: chartRef.current.id,
-      studies: ["STD;EMA", "STD;RSI"],
+      studies, // aplica os selecionados
     });
   }
 
-  const HEADER_H = 56; // topo compacto
+  const HEADER_H = 0; // sem cabeçalho externo; tudo entra no card
+
+  // alterna estudos
+  function toggleStudy(code) {
+    setStudies((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+    );
+  }
 
   return (
     <div className="pro-sim" style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Topo enxuto, sem padding alto */}
-      <div className="mx-auto w-full max-w-[1400px]" style={{ padding: "0 .85rem" }}>
-        <div className="flex flex-wrap items-center justify-between gap-3" style={{ height: HEADER_H }}>
-          <div className="flex items-center gap-3">
-            <Link href="/" className="btn secondary" style={{ width: "auto", padding: ".45rem .8rem" }}>
-              Voltar ao Início
-            </Link>
-            <h1 className="text-xl font-extrabold" style={{ color: "#fff" }}>Simulador de Trading</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <select value={moeda} onChange={(e) => setMoeda(e.target.value)} style={{ width: 220 }}>
-              {COINS.map((c) => (<option key={c.id} value={c.id}>{c.label}</option>))}
-            </select>
-            <button className="btn secondary" onClick={resetar}>Resetar</button>
-          </div>
-        </div>
-      </div>
-
-      {/* Conteúdo em tela cheia sem “respiro” superior */}
       <div className="mx-auto w-full max-w-[1400px] px-4" style={{ height: `calc(100vh - ${HEADER_H}px)` }}>
         <div className="sim-grid" style={{ height: "100%" }}>
-          {/* Gráfico */}
+          {/* ===== Gráfico ===== */}
           <section className="card" style={{ minHeight: 0, display: "flex", flexDirection: "column" }}>
             <div className="chart-head">
-              <span>Gráfico — {COINS.find((c) => c.id === moeda)?.label}</span>
-              <span className="chip">{carregando ? "Atualizando…" : fmtUSD(preco)}</span>
+              {/* título (coluna 1) */}
+              <div className="chart-title">Gráfico — {COINS.find((c) => c.id === moeda)?.label}</div>
+
+              {/* indicadores (coluna 2) */}
+              <div className="chip-row" title="Indicadores">
+                {ALL_STUDIES.map((s) => (
+                  <button
+                    key={s.code}
+                    className={`togglechip ${studies.includes(s.code) ? "on" : ""}`}
+                    onClick={() => toggleStudy(s.code)}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* controles à direita (coluna 3) */}
+              <div style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
+                <select value={moeda} onChange={(e) => setMoeda(e.target.value)} style={{ width: 220 }}>
+                  {COINS.map((c) => (<option key={c.id} value={c.id}>{c.label}</option>))}
+                </select>
+                <span className="chip">{carregando ? "Atualizando…" : fmtUSD(preco)}</span>
+                <button className="btn secondary" onClick={resetar}>Resetar</button>
+                <Link href="/" className="btn primary">Voltar ao Início</Link>
+              </div>
             </div>
-            <div id="tradingview_chart_container" ref={chartRef} className="chart-box" style={{ minHeight: 0, flex: 1 }} />
+            <div id="tradingview_chart_container" ref={chartRef} className="chart-box" />
           </section>
 
-          {/* Painel */}
+          {/* ===== Painel ===== */}
           <aside className="card panel" style={{ minHeight: 0 }}>
             <div className="section-title">Sua conta (demo)</div>
             <div className="stat"><span className="muted">Saldo</span><strong className="strong">{fmtUSD(saldo)}</strong></div>
