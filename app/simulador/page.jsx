@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
-// ==== UI helpers ====
+/** ===== Helpers de UI ===== */
 function Pill({ active, onClick, children, ariaLabel }) {
   return (
     <button
@@ -38,7 +38,7 @@ function StatRow({ label, value, accent }) {
   );
 }
 
-// ==== Tutorial modal (simples) ====
+/** ===== Tutorial ===== */
 function TutorialModal({ open, onClose }) {
   if (!open) return null;
   return (
@@ -46,11 +46,11 @@ function TutorialModal({ open, onClose }) {
       <div className="w-[min(680px,92vw)] bg-slate-900/95 border border-slate-700 rounded-2xl p-5">
         <h3 className="text-lg font-semibold text-slate-100">Como usar o simulador</h3>
         <ol className="list-decimal pl-5 mt-3 space-y-2 text-slate-200/90">
-          <li>Escolha o ativo no seletor (ex: <b>Bitcoin</b>).</li>
-          <li>Use os botões <b>RSI</b>, <b>MACD</b>, <b>EMA</b>, <b>BB</b> para ligar/desligar indicadores.</li>
+          <li>Escolha o ativo (ex.: <b>Bitcoin</b>).</li>
+          <li>Ligue/desligue <b>RSI</b>, <b>MACD</b>, <b>EMA</b>, <b>BB</b>.</li>
           <li>Defina o <b>tamanho da ordem</b> e clique em <b>Comprar</b> ou <b>Vender</b>.</li>
-          <li>Acompanhe o <b>P&amp;L</b> não realizado e seu <b>saldo</b> no painel à direita.</li>
-          <li>Use <b>Resetar</b> para recomeçar e <b>Compartilhar resultado</b> para mostrar seu progresso.</li>
+          <li>Acompanhe <b>P&amp;L</b>, <b>saldo</b> e <b>histórico</b>.</li>
+          <li>Use <b>Resetar</b> para recomeçar e <b>Compartilhar</b> para divulgar seu resultado.</li>
         </ol>
         <div className="mt-5 flex justify-end gap-2">
           <button
@@ -65,7 +65,7 @@ function TutorialModal({ open, onClose }) {
   );
 }
 
-// ==== Botão compartilhar ====
+/** ===== Compartilhar ===== */
 function SharePnLButton({ stats }) {
   const onShare = async () => {
     const text = `Meu desempenho no RadarCrypto.space:
@@ -75,7 +75,7 @@ function SharePnLButton({ stats }) {
 Experimente você também: radarcrypto.space`;
     try {
       await navigator.clipboard.writeText(text);
-      alert("Resumo copiado! Cole onde quiser (WhatsApp, Telegram, etc.).");
+      alert("Resumo copiado! Cole onde quiser.");
     } catch {
       alert(text);
     }
@@ -90,25 +90,51 @@ Experimente você também: radarcrypto.space`;
   );
 }
 
-// ==== Componente de gráfico (TradingView) ====
+/** ===== TradingView (com loader robusto) ===== */
 function TradingViewChart({ symbol = "BINANCE:BTCUSDT", interval = "5", fullscreen }) {
-  const container = useRef(null);
+  const containerRef = useRef(null);
+  const widgetRef = useRef(null);
+  const [ready, setReady] = useState(typeof window !== "undefined" && !!window.TradingView);
 
+  // ID único para o container (evita conflitos)
+  const containerId = useMemo(() => `tv-container-${Math.random().toString(36).slice(2)}`, []);
+
+  // carrega o script apenas uma vez
   useEffect(() => {
-    // evita duplicar script
-    if (document.getElementById("tv-script")) return;
+    if (ready) return;
+    if (document.getElementById("tv-script")) {
+      // se o script já existe, esperamos ficar disponível
+      const i = setInterval(() => {
+        if (window.TradingView) {
+          clearInterval(i);
+          setReady(true);
+        }
+      }, 100);
+      return () => clearInterval(i);
+    }
+    const s = document.createElement("script");
+    s.id = "tv-script";
+    s.src = "https://s3.tradingview.com/tv.js";
+    s.async = true;
+    s.onload = () => setReady(true);
+    document.body.appendChild(s);
+  }, [ready]);
 
-    const script = document.createElement("script");
-    script.id = "tv-script";
-    script.src = "https://s3.tradingview.com/tv.js";
-    script.async = true;
-    document.body.appendChild(script);
-  }, []);
-
+  // cria / recria o widget quando pronto ou quando mudar props
   useEffect(() => {
-    if (!window.TradingView || !container.current) return;
+    if (!ready || !containerRef.current) return;
 
-    const widget = new window.TradingView.widget({
+    // limpa instância anterior
+    if (widgetRef.current && widgetRef.current.remove) {
+      widgetRef.current.remove();
+      widgetRef.current = null;
+    }
+
+    // garante altura mínima (caso pai ainda esteja calculando layout)
+    containerRef.current.style.minHeight = fullscreen ? "78vh" : "46vh";
+
+    // cria widget
+    widgetRef.current = new window.TradingView.widget({
       autosize: true,
       symbol,
       interval,
@@ -119,39 +145,48 @@ function TradingViewChart({ symbol = "BINANCE:BTCUSDT", interval = "5", fullscre
       toolbar_bg: "#0f172a",
       enable_publishing: false,
       allow_symbol_change: false,
-      container_id: container.current.id,
-      studies: [], // indicadores serão ligados/desligados por “chips”
+      container_id: containerId,
+      studies: [], // toggles visuais por enquanto
     });
 
+    // limpeza
     return () => {
-      // o widget remove-se sozinho quando o container sai do DOM
-      if (widget && widget.remove) widget.remove();
+      if (widgetRef.current && widgetRef.current.remove) {
+        widgetRef.current.remove();
+        widgetRef.current = null;
+      }
     };
-  }, [symbol, interval, fullscreen]); // refaz quando entra/saí do modo fullscreen
+  }, [ready, symbol, interval, fullscreen, containerId]);
 
   return (
     <div
-      id="tv-container"
-      ref={container}
+      id={containerId}
+      ref={containerRef}
       className={`w-full ${fullscreen ? "h-[78vh]" : "h-[46vh]"} rounded-xl overflow-hidden bg-slate-900/60 border border-slate-700`}
-    />
+    >
+      {!ready && (
+        <div className="h-full grid place-items-center text-slate-300 text-sm">
+          Carregando gráfico…
+        </div>
+      )}
+    </div>
   );
 }
 
-// ==== Simulador (estado simples em memória) ====
+/** ===== Página ===== */
 export default function SimuladorPage() {
-  // estado de conta/ordens
+  // estado financeiro
   const [balance, setBalance] = useState(10000);
   const [qty, setQty] = useState(0);
   const [positionValue, setPositionValue] = useState(0);
   const [orderSize, setOrderSize] = useState(100);
   const [symbol, setSymbol] = useState("BINANCE:BTCUSDT");
 
-  // histórico local
+  // histórico e UI
   const [history, setHistory] = useState([]);
   const [toast, setToast] = useState({ show: false, msg: "", type: "success" });
 
-  // UI/indicadores
+  // indicadores (estado visual)
   const [useRSI, setUseRSI] = useState(true);
   const [useMACD, setUseMACD] = useState(false);
   const [useEMA, setUseEMA] = useState(true);
@@ -159,27 +194,20 @@ export default function SimuladorPage() {
   const [fullscreen, setFullscreen] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
 
-  // preço “atual” (apenas visual nesta versão; você já está puxando do TradingView)
+  // preço “mock” apenas para P&L
   const [mockPrice, setMockPrice] = useState(112000.0);
-
   useEffect(() => {
     const id = setInterval(() => {
-      // pequena variação para exemplo
-      setMockPrice((p) => {
-        const delta = (Math.random() - 0.5) * 60;
-        return Math.max(10, p + delta);
-      });
+      setMockPrice((p) => Math.max(10, p + (Math.random() - 0.5) * 60));
     }, 1500);
     return () => clearInterval(id);
   }, []);
 
-  // P&L não realizado
-  const unrealized = useMemo(() => {
-    // aqui, tratamos qty como quantidade do ativo (ex.: BTC)
-    return (mockPrice * qty) - positionValue;
-  }, [mockPrice, qty, positionValue]);
+  const unrealized = useMemo(
+    () => mockPrice * qty - positionValue,
+    [mockPrice, qty, positionValue]
+  );
 
-  // estatísticas para “Resumo”
   const stats = useMemo(() => {
     const trades = history.length;
     const totalPnl = history.reduce((acc, h) => acc + h.pnl, 0);
@@ -188,7 +216,6 @@ export default function SimuladorPage() {
     return { trades, totalPnl, hitRate };
   }, [history]);
 
-  // helpers
   const formatUSD = (n) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n ?? 0);
 
@@ -214,12 +241,11 @@ export default function SimuladorPage() {
       newPositionValue += orderSize;
       notify("Compra executada!");
     } else {
-      // venda até o limite da posição
       const sellQty = Math.min(qty, qtyDelta);
       const sellValue = sellQty * price;
       newBalance += sellValue;
       newQty -= sellQty;
-      // reconhece PnL proporcional na posição
+
       const avgPrice = positionValue / (qty || 1);
       const realized = sellQty * (price - avgPrice);
       newPositionValue -= avgPrice * sellQty;
@@ -238,7 +264,7 @@ export default function SimuladorPage() {
         side: side === "buy" ? "Compra" : "Venda",
         price,
         amount: orderSize,
-        pnl: 0, // não realizado é mostrado em tempo real
+        pnl: 0,
       },
       ...h,
     ]);
@@ -254,10 +280,9 @@ export default function SimuladorPage() {
 
   return (
     <div className="min-h-[100dvh] bg-slate-950 text-slate-100">
-      {/* Toast */}
       <Toast show={toast.show} msg={toast.msg} type={toast.type} />
 
-      {/* Header compacto (colado no topo) */}
+      {/* Header topo */}
       <header className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
           <Link
@@ -303,9 +328,8 @@ export default function SimuladorPage() {
 
       {/* Conteúdo */}
       <main className="mx-auto max-w-7xl px-4 py-4 grid gap-4 lg:grid-cols-[1fr_340px]">
-        {/* Coluna esquerda: gráfico + indicadores + preço atual */}
+        {/* Esquerda: indicadores + gráfico + ações + histórico */}
         <section className="space-y-3">
-          {/* barra de indicadores */}
           <div className="flex flex-wrap gap-2 items-center">
             <span className="text-slate-300">Indicadores:</span>
             <Pill active={useRSI} onClick={() => setUseRSI((v) => !v)} ariaLabel="RSI on/off">RSI</Pill>
@@ -314,17 +338,14 @@ export default function SimuladorPage() {
             <Pill active={useBB} onClick={() => setUseBB((v) => !v)} ariaLabel="BB on/off">BB</Pill>
             <div className="ml-auto">
               <span className="px-3 py-1 rounded-xl bg-slate-800/70 border border-slate-700 text-slate-200">
-                {formatUSD(mockPrice)}
+                {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(mockPrice)}
               </span>
             </div>
           </div>
 
-          {/* gráfico */}
           <TradingViewChart symbol={symbol} interval="5" fullscreen={fullscreen} />
 
-          {/* ações + histórico (desktop: abaixo do gráfico) */}
           <div className="grid gap-4 md:grid-cols-2">
-            {/* bloco de ações */}
             <div className="rounded-2xl bg-slate-900/60 border border-slate-700 p-4">
               <h3 className="font-semibold text-slate-100 mb-2">Ações</h3>
               <label className="block text-sm text-slate-300 mb-1">Tamanho da ordem (USDT)</label>
@@ -358,7 +379,6 @@ export default function SimuladorPage() {
               </button>
             </div>
 
-            {/* histórico */}
             <div className="rounded-2xl bg-slate-900/60 border border-slate-700 p-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-slate-100">Histórico de operações</h3>
@@ -387,8 +407,12 @@ export default function SimuladorPage() {
                       <span className={`${h.side === "Compra" ? "text-emerald-400" : "text-rose-400"}`}>
                         {h.side}
                       </span>
-                      <span className="text-slate-300">{formatUSD(h.price)}</span>
-                      <span className="text-slate-400">{formatUSD(h.amount)}</span>
+                      <span className="text-slate-300">
+                        {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(h.price)}
+                      </span>
+                      <span className="text-slate-400">
+                        {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(h.amount)}
+                      </span>
                     </div>
                   ))
                 )}
@@ -397,7 +421,7 @@ export default function SimuladorPage() {
           </div>
         </section>
 
-        {/* Coluna direita: conta + resumo + compartilhar */}
+        {/* Direita: conta + resumo */}
         <aside className="space-y-4">
           <div className="rounded-2xl bg-slate-900/60 border border-slate-700 p-4">
             <h3 className="font-semibold text-slate-100 mb-2">Sua conta (demo)</h3>
