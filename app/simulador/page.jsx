@@ -1,16 +1,13 @@
-// app/simulador/page.jsx
 "use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-/* =========================================================
-   SIMULADOR PRO (sem sidebar)
-   - Topo com botão "Voltar ao Início"
-   - Gráfico TradingView maior ao centro
-   - Conta demo + Comprar/Vender + P&L + Histórico
-   - Estilos escopados (.pro-sim) -> Home não é afetada
-========================================================= */
+/*  SIMULADOR PRO — fullscreen
+    - Home volta escura via globals.css
+    - Esta tela usa 100vh e trava a rolagem do body
+    - Gráfico ocupa o máximo; painel tem histórico com rolagem interna
+*/
 
 const COINS = [
   { id: "bitcoin", label: "Bitcoin (BTC)" },
@@ -49,12 +46,18 @@ export default function SimuladorPro() {
   const [tamanhoOrdem, setTamanhoOrdem] = useState(100);
   const [historico, setHistorico] = useState([]);
 
-  // ===== preço ao vivo (CoinGecko) =====
+  // trava rolagem do body quando esta tela está aberta
+  useEffect(() => {
+    const { overflow } = document.body.style;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = overflow; };
+  }, []);
+
+  // preço ao vivo
   useEffect(() => {
     let off = false;
     async function fetchPreco() {
-      setCarregando(true);
-      setErro("");
+      setCarregando(true); setErro("");
       try {
         const r = await fetch(
           `https://api.coingecko.com/api/v3/simple/price?ids=${moeda}&vs_currencies=usd`,
@@ -72,16 +75,13 @@ export default function SimuladorPro() {
     }
     fetchPreco();
     const id = setInterval(fetchPreco, 15000);
-    return () => {
-      off = true;
-      clearInterval(id);
-    };
+    return () => { off = true; clearInterval(id); };
   }, [moeda]);
 
   const valorPosicao = useMemo(() => qtd * preco, [qtd, preco]);
   const pnl = useMemo(() => valorPosicao, [valorPosicao]);
 
-  // ===== ordens =====
+  // ordens
   function comprar() {
     if (preco <= 0 || tamanhoOrdem <= 0 || tamanhoOrdem > saldo) return;
     const q = tamanhoOrdem / preco;
@@ -104,12 +104,10 @@ export default function SimuladorPro() {
   }
   function resetar() {
     if (!confirm("Deseja resetar saldo, posição e histórico?")) return;
-    setSaldo(10000);
-    setQtd(0);
-    setHistorico([]);
+    setSaldo(10000); setQtd(0); setHistorico([]);
   }
 
-  // ===== TradingView =====
+  // TradingView
   const chartRef = useRef(null);
   const scriptLoadedRef = useRef(false);
 
@@ -117,241 +115,133 @@ export default function SimuladorPro() {
     if (scriptLoadedRef.current) return;
     const s = document.createElement("script");
     s.src = "https://s3.tradingview.com/tv.js";
-    s.onload = () => {
-      scriptLoadedRef.current = true;
-      renderWidget();
-    };
+    s.onload = () => { scriptLoadedRef.current = true; renderWidget(); };
     document.body.appendChild(s);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (scriptLoadedRef.current) renderWidget();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moeda]);
+  useEffect(() => { if (scriptLoadedRef.current) renderWidget(); }, [moeda]);
 
   function renderWidget() {
     if (!window.TradingView || !chartRef.current) return;
     chartRef.current.innerHTML = "";
-    /* global TradingView */
     new window.TradingView.widget({
       autosize: true,
       symbol: TV_SYMBOLS[moeda] || "BINANCE:BTCUSDT",
-      interval: "1",             // 1m para dinâmica
+      interval: "5",
       timezone: "Etc/UTC",
       theme: "dark",
-      style: "1",                // candles
+      style: "1",
       locale: "br",
       toolbar_bg: "#0b1220",
       hide_top_toolbar: false,
       hide_legend: false,
       container_id: chartRef.current.id,
-      studies: ["STD;EMA", "STD;RSI"], // EMA + RSI
+      studies: ["STD;EMA", "STD;RSI"],
     });
   }
 
-  // ===== UI =====
+  // alturas: cabeçalho 72px; conteúdo ocupa o restante
+  const HEADER_H = 72;
+
   return (
-    <div className="pro-sim min-h-screen w-full">
-      <div className="mx-auto max-w-[1400px] px-4 py-6">
-        {/* topo */}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div className="pro-sim" style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+      {/* topo */}
+      <div className="mx-auto w-full max-w-[1400px]" style={{ padding: "1rem .85rem 0" }}>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link href="/" className="btn secondary" style={{ width: "auto", padding: ".55rem .9rem" }}>
               Voltar ao Início
             </Link>
-            <h1 className="text-2xl font-extrabold tracking-tight text-white">
+            <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: "#fff" }}>
               Simulador de Trading
             </h1>
           </div>
-
           <div className="flex items-center gap-3">
-            <select value={moeda} onChange={(e) => setMoeda(e.target.value)}>
+            <select value={moeda} onChange={(e) => setMoeda(e.target.value)} style={{ width: 220 }}>
               {COINS.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
+                <option key={c.id} value={c.id}>{c.label}</option>
               ))}
             </select>
-            <button className="btn secondary" onClick={resetar}>
-              Resetar
-            </button>
+            <button className="btn secondary" onClick={resetar}>Resetar</button>
           </div>
         </div>
+      </div>
 
-        {/* grid principal: gráfico grande | painel */}
-        <div
-          className="sim-grid"
-          style={{
-            // força 2 colunas em telas grandes (gráfico | painel)
-            gridTemplateColumns: "1fr",
-          }}
-        >
-          {/* em >=1024px vira 2 colunas */}
-          <style jsx>{`
-            @media (min-width: 1024px) {
-              .sim-grid {
-                grid-template-columns: 1fr 360px !important;
-              }
-            }
-          `}</style>
-
-          {/* gráfico (MAIOR) */}
-          <section className="card chart-wrap">
+      {/* conteúdo em tela cheia (sem rolagem da página) */}
+      <div className="mx-auto w-full max-w-[1400px] px-4" style={{ height: `calc(100vh - ${HEADER_H}px)` }}>
+        <div className="sim-grid" style={{ height: "100%" }}>
+          {/* gráfico ocupa toda a coluna esquerda */}
+          <section className="card chart-wrap" style={{ minHeight: 0, display: "flex", flexDirection: "column" }}>
             <div className="chart-head">
               <span>Gráfico — {COINS.find((c) => c.id === moeda)?.label}</span>
-              <span className="chip">
-                {carregando ? "Atualizando…" : fmtUSD(preco)}
-              </span>
+              <span className="chip">{carregando ? "Atualizando…" : fmtUSD(preco)}</span>
             </div>
-            <div
-              id="tradingview_chart_container"
-              ref={chartRef}
-              className="chart-box"
-              style={{ height: 620 }}
-            />
+            <div id="tradingview_chart_container" ref={chartRef} className="chart-box" style={{ minHeight: 0, flex: 1 }} />
           </section>
 
-          {/* painel direito */}
-          <aside className="card panel">
+          {/* painel direito com histórico interno */}
+          <aside className="card panel" style={{ minHeight: 0 }}>
             <div className="section-title">Sua conta (demo)</div>
-            <div className="stat">
-              <span className="muted">Saldo</span>
-              <strong className="strong">{fmtUSD(saldo)}</strong>
-            </div>
-            <div className="stat">
-              <span className="muted">Quantidade</span>
-              <span className="strong font-mono">{qtd.toFixed(6)}</span>
-            </div>
-            <div className="stat">
-              <span className="muted">Valor da posição</span>
-              <span className="strong">{fmtUSD(qtd * preco)}</span>
-            </div>
-            <div className={`pnl-pos ${pnl >= 0 ? "g" : "r"}`}>
-              <span>P&L (não realizado)</span>
-              <strong>{fmtUSD(pnl)}</strong>
-            </div>
+            <div className="stat"><span className="muted">Saldo</span><strong className="strong">{fmtUSD(saldo)}</strong></div>
+            <div className="stat"><span className="muted">Quantidade</span><span className="strong" style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{qtd.toFixed(6)}</span></div>
+            <div className="stat"><span className="muted">Valor da posição</span><span className="strong">{fmtUSD(qtd * preco)}</span></div>
+            <div className={`pnl-pos ${pnl >= 0 ? "g" : "r"}`}><span>P&L (não realizado)</span><strong>{fmtUSD(pnl)}</strong></div>
 
-            <div className="section-title" style={{ marginTop: "1rem" }}>
-              Ações
-            </div>
-            <label className="muted" style={{ fontSize: ".9rem" }}>
-              Tamanho da ordem (USDT)
-            </label>
+            <div className="section-title" style={{ marginTop: "1rem" }}>Ações</div>
+            <label className="muted" style={{ fontSize: ".9rem" }}>Tamanho da ordem (USDT)</label>
             <input
-              type="number"
-              min={10}
-              step={10}
-              value={tamanhoOrdem}
-              onChange={(e) =>
-                setTamanhoOrdem(Math.max(0, Number(e.target.value || 0)))
-              }
-              placeholder="100"
-              style={{ marginTop: ".35rem" }}
+              type="number" min={10} step={10} value={tamanhoOrdem}
+              onChange={(e)=>setTamanhoOrdem(Math.max(0, Number(e.target.value||0)))}
+              placeholder="100" style={{ marginTop: ".35rem" }}
             />
-            <div
-              className="muted"
-              style={{ textAlign: "right", fontSize: ".8rem", margin: ".35rem 0 1rem" }}
-            >
+            <div className="muted" style={{ textAlign:"right", fontSize: ".8rem", margin: ".35rem 0 1rem" }}>
               ≈ {(tamanhoOrdem / (preco || 1)).toFixed(6)}{" "}
-              {COINS.find((c) => c.id === moeda)?.label
-                .split(" ")[1]
-                ?.replace(/[()]/g, "")}
+              {COINS.find((c)=>c.id===moeda)?.label.split(" ")[1]?.replace(/[()]/g,"")}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".6rem" }}>
-              <button
-                className="btn buy"
-                onClick={comprar}
-                disabled={preco <= 0 || tamanhoOrdem <= 0 || tamanhoOrdem > saldo}
-                title={
-                  tamanhoOrdem > saldo
-                    ? "Saldo insuficiente"
-                    : tamanhoOrdem <= 0
-                    ? "Informe um valor > 0"
-                    : ""
-                }
-              >
-                Comprar
-              </button>
-              <button
-                className="btn sell"
-                onClick={vender}
-                disabled={qtd <= 0}
-                title={qtd <= 0 ? "Sem posição para vender" : ""}
-              >
-                Vender
-              </button>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap: ".6rem" }}>
+              <button className="btn buy" onClick={comprar} disabled={preco<=0 || tamanhoOrdem<=0 || tamanhoOrdem>saldo}
+                title={tamanhoOrdem>saldo?"Saldo insuficiente":tamanhoOrdem<=0?"Informe um valor > 0":""}>Comprar</button>
+              <button className="btn sell" onClick={vender} disabled={qtd<=0} title={qtd<=0?"Sem posição para vender":""}>Vender</button>
             </div>
 
-            {erro && (
-              <p className="muted" style={{ fontSize: ".8rem", marginTop: ".8rem" }}>
-                {erro} — tente novamente em instantes.
-              </p>
-            )}
-          </aside>
-        </div>
+            {erro && <p className="muted" style={{ fontSize: ".8rem", marginTop: ".8rem" }}>{erro} — tente novamente em instantes.</p>}
 
-        {/* histórico */}
-        <div className="card" style={{ marginTop: "1rem", padding: "1rem" }}>
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">
-              Histórico de operações
-            </h2>
-            {historico.length > 0 && (
-              <button
-                className="btn secondary"
-                style={{ width: "auto", padding: ".45rem .8rem", fontWeight: 600 }}
-                onClick={() => setHistorico([])}
-              >
+            {/* HISTÓRICO dentro do painel (rolagem própria) */}
+            <div className="section-title" style={{ marginTop: "1rem" }}>Histórico de operações</div>
+            <div style={{ overflow: "auto", border: "1px solid var(--stroke)", borderRadius: 10, flex: 1, minHeight: 120 }}>
+              {historico.length === 0 ? (
+                <div className="muted" style={{ textAlign:"center", padding:"1.25rem 0" }}>
+                  Sem operações por enquanto. Faça uma compra ou venda para começar.
+                </div>
+              ) : (
+                <table className="table" style={{ width:"100%" }}>
+                  <thead>
+                    <tr><th>Data</th><th>Tipo</th><th>Moeda</th><th>Preço</th><th>Qtd</th><th>Valor</th></tr>
+                  </thead>
+                  <tbody>
+                    {historico.map((h,i)=>(
+                      <tr key={i}>
+                        <td>{new Date(h.data).toLocaleString()}</td>
+                        <td style={{ color: h.tipo==="Compra" ? "#86efac" : "#fca5a5", fontWeight:700 }}>{h.tipo}</td>
+                        <td>{COINS.find(c=>c.id===h.moeda)?.label || h.moeda}</td>
+                        <td style={{ fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace" }}>{fmtUSD(h.preco)}</td>
+                        <td style={{ fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace" }}>{h.qtd.toFixed(6)}</td>
+                        <td style={{ fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace" }}>{fmtUSD(h.qtd*h.preco)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {historico.length>0 && (
+              <button className="btn secondary" style={{ marginTop: ".6rem", width:"100%", padding:".45rem .8rem", fontWeight:600 }}
+                onClick={()=>setHistorico([])}>
                 Limpar histórico
               </button>
             )}
-          </div>
-
-          {historico.length === 0 ? (
-            <div className="muted" style={{ textAlign: "center", padding: "2.5rem 0" }}>
-              Sem operações por enquanto. Faça uma compra ou venda para começar.
-            </div>
-          ) : (
-            <div style={{ overflowX: "auto", marginTop: ".6rem" }}>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Data</th>
-                    <th>Tipo</th>
-                    <th>Moeda</th>
-                    <th>Preço</th>
-                    <th>Qtd</th>
-                    <th>Valor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {historico.map((h, i) => (
-                    <tr key={i}>
-                      <td>{new Date(h.data).toLocaleString()}</td>
-                      <td
-                        style={{
-                          color: h.tipo === "Compra" ? "#86efac" : "#fca5a5",
-                          fontWeight: 700,
-                        }}
-                      >
-                        {h.tipo}
-                      </td>
-                      <td>{COINS.find((c) => c.id === h.moeda)?.label || h.moeda}</td>
-                      <td className="font-mono">{fmtUSD(h.preco)}</td>
-                      <td className="font-mono">{h.qtd.toFixed(6)}</td>
-                      <td className="font-mono">{fmtUSD(h.qtd * h.preco)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        <div className="muted" style={{ fontSize: ".8rem", marginTop: ".75rem" }}>
-          Este simulador é apenas educacional. Não constitui recomendação de investimento. Os dados podem sofrer atrasos.
+          </aside>
         </div>
       </div>
     </div>
