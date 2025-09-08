@@ -2,7 +2,7 @@
 import "../styles/globals.css";
 
 export const metadata = {
-  title: "RadarCripto.space",
+  title: "RadarCrypto.space",
   description: "Simulador de trading educacional com preços ao vivo",
 };
 
