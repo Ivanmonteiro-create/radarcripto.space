@@ -2,33 +2,36 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
-/** ===== Helpers de UI ===== */
+/** ===== Utils ===== */
+function genId() {
+  // Evita usar crypto.randomUUID() (quebra em alguns browsers antigos)
+  return `id_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+const fmtUSD = (n) => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n ?? 0);
+
+/** ===== UI ===== */
 function Pill({ active, onClick, children, ariaLabel }) {
   return (
     <button
       aria-label={ariaLabel}
       onClick={onClick}
       className={`px-3 py-1 rounded-full border transition
-        ${active ? "bg-emerald-600/90 text-white border-emerald-500" : "bg-slate-800/60 text-slate-200 border-slate-600 hover:bg-slate-700/70"}`}
+      ${active ? "bg-emerald-600/90 text-white border-emerald-500" : "bg-slate-800/60 text-slate-200 border-slate-600 hover:bg-slate-700/70"}`}
     >
       {children}
     </button>
   );
 }
-
-function Toast({ msg, type = "success", show }) {
+function Toast({ msg, type="success", show }) {
   return (
-    <div
-      className={`fixed left-1/2 -translate-x-1/2 top-4 z-50 px-4 py-2 rounded-xl shadow-lg text-sm
-        transition-all duration-300
-        ${show ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"}
-        ${type === "success" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"}`}
-    >
+    <div className={`fixed left-1/2 -translate-x-1/2 top-4 z-50 px-4 py-2 rounded-xl shadow-lg text-sm
+      transition-all duration-300
+      ${show ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"}
+      ${type==="success" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"}`}>
       {msg}
     </div>
   );
 }
-
 function StatRow({ label, value, accent }) {
   return (
     <div className="flex items-center justify-between py-1">
@@ -37,8 +40,6 @@ function StatRow({ label, value, accent }) {
     </div>
   );
 }
-
-/** ===== Tutorial ===== */
 function TutorialModal({ open, onClose }) {
   if (!open) return null;
   return (
@@ -48,15 +49,12 @@ function TutorialModal({ open, onClose }) {
         <ol className="list-decimal pl-5 mt-3 space-y-2 text-slate-200/90">
           <li>Escolha o ativo (ex.: <b>Bitcoin</b>).</li>
           <li>Ligue/desligue <b>RSI</b>, <b>MACD</b>, <b>EMA</b>, <b>BB</b>.</li>
-          <li>Defina o <b>tamanho da ordem</b> e clique em <b>Comprar</b> ou <b>Vender</b>.</li>
+          <li>Defina o <b>tamanho da ordem</b> e clique <b>Comprar</b>/<b>Vender</b>.</li>
           <li>Acompanhe <b>P&amp;L</b>, <b>saldo</b> e <b>histórico</b>.</li>
           <li>Use <b>Resetar</b> para recomeçar e <b>Compartilhar</b> para divulgar seu resultado.</li>
         </ol>
-        <div className="mt-5 flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-slate-600 text-slate-200 hover:bg-slate-800"
-          >
+        <div className="mt-5 flex justify-end">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl border border-slate-600 text-slate-200 hover:bg-slate-800">
             Entendi
           </button>
         </div>
@@ -64,13 +62,12 @@ function TutorialModal({ open, onClose }) {
     </div>
   );
 }
-
-/** ===== Compartilhar ===== */
 function SharePnLButton({ stats }) {
   const onShare = async () => {
-    const text = `Meu desempenho no RadarCrypto.space:
+    const text =
+`Meu desempenho no RadarCrypto.space:
 • Operações: ${stats.trades}
-• Lucro acumulado: ${stats.totalPnl >= 0 ? "+" : ""}$${stats.totalPnl.toFixed(2)}
+• Lucro acumulado: ${stats.totalPnl >= 0 ? "+" : ""}${fmtUSD(stats.totalPnl)}
 • Taxa de acerto: ${stats.hitRate.toFixed(0)}%
 Experimente você também: radarcrypto.space`;
     try {
@@ -81,80 +78,72 @@ Experimente você também: radarcrypto.space`;
     }
   };
   return (
-    <button
-      onClick={onShare}
-      className="w-full mt-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white py-2 font-medium"
-    >
+    <button onClick={onShare} className="w-full mt-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white py-2 font-medium">
       Compartilhar resultado
     </button>
   );
 }
 
-/** ===== TradingView (com loader robusto) ===== */
-function TradingViewChart({ symbol = "BINANCE:BTCUSDT", interval = "5", fullscreen }) {
+/** ===== TradingView wrapper (robusto) ===== */
+function TradingViewChart({ symbol="BINANCE:BTCUSDT", interval="5", fullscreen }) {
   const containerRef = useRef(null);
   const widgetRef = useRef(null);
   const [ready, setReady] = useState(typeof window !== "undefined" && !!window.TradingView);
+  const [error, setError] = useState("");
 
-  // ID único para o container (evita conflitos)
-  const containerId = useMemo(() => `tv-container-${Math.random().toString(36).slice(2)}`, []);
+  const containerId = useMemo(() => `tv-container-${genId()}`, []);
 
-  // carrega o script apenas uma vez
   useEffect(() => {
     if (ready) return;
-    if (document.getElementById("tv-script")) {
-      // se o script já existe, esperamos ficar disponível
-      const i = setInterval(() => {
-        if (window.TradingView) {
-          clearInterval(i);
-          setReady(true);
-        }
-      }, 100);
-      return () => clearInterval(i);
-    }
-    const s = document.createElement("script");
-    s.id = "tv-script";
-    s.src = "https://s3.tradingview.com/tv.js";
-    s.async = true;
-    s.onload = () => setReady(true);
-    document.body.appendChild(s);
+    const ensureReady = () => {
+      if (window.TradingView) { setReady(true); return; }
+      const s = document.getElementById("tv-script");
+      if (!s) {
+        const script = document.createElement("script");
+        script.id = "tv-script";
+        script.src = "https://s3.tradingview.com/tv.js";
+        script.async = true;
+        script.onload = () => setReady(true);
+        script.onerror = () => setError("Falha ao carregar TradingView.");
+        document.body.appendChild(script);
+      } else {
+        const i = setInterval(() => {
+          if (window.TradingView) { clearInterval(i); setReady(true); }
+        }, 100);
+        setTimeout(() => clearInterval(i), 8000);
+      }
+    };
+    ensureReady();
   }, [ready]);
 
-  // cria / recria o widget quando pronto ou quando mudar props
   useEffect(() => {
     if (!ready || !containerRef.current) return;
 
-    // limpa instância anterior
-    if (widgetRef.current && widgetRef.current.remove) {
-      widgetRef.current.remove();
-      widgetRef.current = null;
+    try {
+      if (widgetRef.current?.remove) widgetRef.current.remove();
+      containerRef.current.style.minHeight = fullscreen ? "78vh" : "46vh";
+      widgetRef.current = new window.TradingView.widget({
+        autosize: true,
+        symbol,
+        interval,
+        timezone: "Etc/UTC",
+        theme: "dark",
+        style: "1",
+        locale: "br",
+        toolbar_bg: "#0f172a",
+        enable_publishing: false,
+        allow_symbol_change: false,
+        container_id: containerId,
+        studies: [],
+      });
+    } catch (e) {
+      console.error(e);
+      setError("Não foi possível iniciar o gráfico.");
     }
 
-    // garante altura mínima (caso pai ainda esteja calculando layout)
-    containerRef.current.style.minHeight = fullscreen ? "78vh" : "46vh";
-
-    // cria widget
-    widgetRef.current = new window.TradingView.widget({
-      autosize: true,
-      symbol,
-      interval,
-      timezone: "Etc/UTC",
-      theme: "dark",
-      style: "1",
-      locale: "br",
-      toolbar_bg: "#0f172a",
-      enable_publishing: false,
-      allow_symbol_change: false,
-      container_id: containerId,
-      studies: [], // toggles visuais por enquanto
-    });
-
-    // limpeza
     return () => {
-      if (widgetRef.current && widgetRef.current.remove) {
-        widgetRef.current.remove();
-        widgetRef.current = null;
-      }
+      try { widgetRef.current?.remove?.(); } catch {}
+      widgetRef.current = null;
     };
   }, [ready, symbol, interval, fullscreen, containerId]);
 
@@ -164,10 +153,11 @@ function TradingViewChart({ symbol = "BINANCE:BTCUSDT", interval = "5", fullscre
       ref={containerRef}
       className={`w-full ${fullscreen ? "h-[78vh]" : "h-[46vh]"} rounded-xl overflow-hidden bg-slate-900/60 border border-slate-700`}
     >
-      {!ready && (
-        <div className="h-full grid place-items-center text-slate-300 text-sm">
-          Carregando gráfico…
-        </div>
+      {!ready && !error && (
+        <div className="h-full grid place-items-center text-slate-300 text-sm">Carregando gráfico…</div>
+      )}
+      {error && (
+        <div className="h-full grid place-items-center text-rose-300 text-sm">{error}</div>
       )}
     </div>
   );
@@ -175,18 +165,15 @@ function TradingViewChart({ symbol = "BINANCE:BTCUSDT", interval = "5", fullscre
 
 /** ===== Página ===== */
 export default function SimuladorPage() {
-  // estado financeiro
   const [balance, setBalance] = useState(10000);
   const [qty, setQty] = useState(0);
   const [positionValue, setPositionValue] = useState(0);
   const [orderSize, setOrderSize] = useState(100);
   const [symbol, setSymbol] = useState("BINANCE:BTCUSDT");
 
-  // histórico e UI
   const [history, setHistory] = useState([]);
-  const [toast, setToast] = useState({ show: false, msg: "", type: "success" });
+  const [toast, setToast] = useState({ show:false, msg:"", type:"success" });
 
-  // indicadores (estado visual)
   const [useRSI, setUseRSI] = useState(true);
   const [useMACD, setUseMACD] = useState(false);
   const [useEMA, setUseEMA] = useState(true);
@@ -194,34 +181,25 @@ export default function SimuladorPage() {
   const [fullscreen, setFullscreen] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
 
-  // preço “mock” apenas para P&L
   const [mockPrice, setMockPrice] = useState(112000.0);
   useEffect(() => {
-    const id = setInterval(() => {
-      setMockPrice((p) => Math.max(10, p + (Math.random() - 0.5) * 60));
-    }, 1500);
+    const id = setInterval(() => setMockPrice((p) => Math.max(10, p + (Math.random() - 0.5) * 60)), 1500);
     return () => clearInterval(id);
   }, []);
 
-  const unrealized = useMemo(
-    () => mockPrice * qty - positionValue,
-    [mockPrice, qty, positionValue]
-  );
+  const unrealized = useMemo(() => mockPrice * qty - positionValue, [mockPrice, qty, positionValue]);
 
   const stats = useMemo(() => {
     const trades = history.length;
-    const totalPnl = history.reduce((acc, h) => acc + h.pnl, 0);
-    const wins = history.filter((h) => h.pnl > 0).length;
-    const hitRate = trades ? (wins / trades) * 100 : 0;
+    const totalPnl = history.reduce((acc,h)=>acc + h.pnl, 0);
+    const wins = history.filter(h=>h.pnl>0).length;
+    const hitRate = trades ? (wins/trades)*100 : 0;
     return { trades, totalPnl, hitRate };
   }, [history]);
 
-  const formatUSD = (n) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n ?? 0);
-
-  const notify = (msg, type = "success") => {
-    setToast({ msg, type, show: true });
-    setTimeout(() => setToast((t) => ({ ...t, show: false })), 1800);
+  const notify = (msg, type="success") => {
+    setToast({ msg, type, show:true });
+    setTimeout(()=>setToast(t=>({...t,show:false})), 1800);
   };
 
   const placeOrder = (side) => {
@@ -233,12 +211,12 @@ export default function SimuladorPage() {
 
     let newBalance = balance;
     let newQty = qty;
-    let newPositionValue = positionValue;
+    let newPV = positionValue;
 
     if (side === "buy") {
       newBalance -= orderSize;
       newQty += qtyDelta;
-      newPositionValue += orderSize;
+      newPV += orderSize;
       notify("Compra executada!");
     } else {
       const sellQty = Math.min(qty, qtyDelta);
@@ -246,20 +224,20 @@ export default function SimuladorPage() {
       newBalance += sellValue;
       newQty -= sellQty;
 
-      const avgPrice = positionValue / (qty || 1);
-      const realized = sellQty * (price - avgPrice);
-      newPositionValue -= avgPrice * sellQty;
+      const avg = positionValue / (qty || 1);
+      const realized = sellQty * (price - avg);
+      newPV -= avg * sellQty;
 
-      notify(realized >= 0 ? `Venda realizada (+${formatUSD(realized)})` : `Venda realizada (${formatUSD(realized)})`);
+      notify(realized >= 0 ? `Venda realizada (+${fmtUSD(realized)})` : `Venda realizada (${fmtUSD(realized)})`);
     }
 
     setBalance(Number(newBalance.toFixed(2)));
     setQty(Number(newQty.toFixed(8)));
-    setPositionValue(Number(newPositionValue.toFixed(2)));
+    setPositionValue(Number(newPV.toFixed(2)));
 
-    setHistory((h) => [
+    setHistory(h => [
       {
-        id: crypto.randomUUID(),
+        id: genId(),
         time: new Date().toLocaleTimeString(),
         side: side === "buy" ? "Compra" : "Venda",
         price,
@@ -271,10 +249,7 @@ export default function SimuladorPage() {
   };
 
   const resetAll = () => {
-    setBalance(10000);
-    setQty(0);
-    setPositionValue(0);
-    setHistory([]);
+    setBalance(10000); setQty(0); setPositionValue(0); setHistory([]);
     notify("Simulador resetado.");
   };
 
@@ -282,20 +257,16 @@ export default function SimuladorPage() {
     <div className="min-h-[100dvh] bg-slate-950 text-slate-100">
       <Toast show={toast.show} msg={toast.msg} type={toast.type} />
 
-      {/* Header topo */}
       <header className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
-          <Link
-            href="/"
-            className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
-          >
+          <Link href="/" className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium">
             Voltar ao Início
           </Link>
 
           <div className="ml-auto flex items-center gap-2">
             <select
               value={symbol}
-              onChange={(e) => setSymbol(e.target.value)}
+              onChange={(e)=>setSymbol(e.target.value)}
               className="bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2 text-slate-100"
               title="Ativo"
             >
@@ -310,14 +281,14 @@ export default function SimuladorPage() {
             </select>
 
             <button
-              onClick={() => setFullscreen((f) => !f)}
+              onClick={()=>setFullscreen(f=>!f)}
               className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100"
             >
               {fullscreen ? "Sair da tela cheia" : "Expandir gráfico"}
             </button>
 
             <button
-              onClick={() => setShowTutorial(true)}
+              onClick={()=>setShowTutorial(true)}
               className="px-3 py-2 rounded-xl bg-sky-700 hover:bg-sky-600 border border-sky-600 text-white"
             >
               Tutorial
@@ -326,19 +297,17 @@ export default function SimuladorPage() {
         </div>
       </header>
 
-      {/* Conteúdo */}
       <main className="mx-auto max-w-7xl px-4 py-4 grid gap-4 lg:grid-cols-[1fr_340px]">
-        {/* Esquerda: indicadores + gráfico + ações + histórico */}
         <section className="space-y-3">
           <div className="flex flex-wrap gap-2 items-center">
             <span className="text-slate-300">Indicadores:</span>
-            <Pill active={useRSI} onClick={() => setUseRSI((v) => !v)} ariaLabel="RSI on/off">RSI</Pill>
-            <Pill active={useMACD} onClick={() => setUseMACD((v) => !v)} ariaLabel="MACD on/off">MACD</Pill>
-            <Pill active={useEMA} onClick={() => setUseEMA((v) => !v)} ariaLabel="EMA on/off">EMA</Pill>
-            <Pill active={useBB} onClick={() => setUseBB((v) => !v)} ariaLabel="BB on/off">BB</Pill>
+            <Pill active={useRSI} onClick={()=>setUseRSI(v=>!v)} ariaLabel="RSI on/off">RSI</Pill>
+            <Pill active={useMACD} onClick={()=>setUseMACD(v=>!v)} ariaLabel="MACD on/off">MACD</Pill>
+            <Pill active={useEMA} onClick={()=>setUseEMA(v=>!v)} ariaLabel="EMA on/off">EMA</Pill>
+            <Pill active={useBB} onClick={()=>setUseBB(v=>!v)} ariaLabel="BB on/off">BB</Pill>
             <div className="ml-auto">
               <span className="px-3 py-1 rounded-xl bg-slate-800/70 border border-slate-700 text-slate-200">
-                {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(mockPrice)}
+                {fmtUSD(mockPrice)}
               </span>
             </div>
           </div>
@@ -350,31 +319,19 @@ export default function SimuladorPage() {
               <h3 className="font-semibold text-slate-100 mb-2">Ações</h3>
               <label className="block text-sm text-slate-300 mb-1">Tamanho da ordem (USDT)</label>
               <input
-                type="number"
-                min={10}
-                step={10}
-                value={orderSize}
-                onChange={(e) => setOrderSize(Number(e.target.value))}
+                type="number" min={10} step={10} value={orderSize}
+                onChange={(e)=>setOrderSize(Number(e.target.value))}
                 className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 mb-3"
               />
               <div className="flex gap-2">
-                <button
-                  onClick={() => placeOrder("buy")}
-                  className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white py-2 font-semibold"
-                >
+                <button onClick={()=>placeOrder("buy")} className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white py-2 font-semibold">
                   Comprar
                 </button>
-                <button
-                  onClick={() => placeOrder("sell")}
-                  className="flex-1 rounded-xl bg-rose-600 hover:bg-rose-500 text-white py-2 font-semibold"
-                >
+                <button onClick={()=>placeOrder("sell")} className="flex-1 rounded-xl bg-rose-600 hover:bg-rose-500 text-white py-2 font-semibold">
                   Vender
                 </button>
               </div>
-              <button
-                onClick={resetAll}
-                className="w-full mt-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 py-2"
-              >
+              <button onClick={resetAll} className="w-full mt-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 py-2">
                 Resetar
               </button>
             </div>
@@ -382,37 +339,23 @@ export default function SimuladorPage() {
             <div className="rounded-2xl bg-slate-900/60 border border-slate-700 p-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-slate-100">Histórico de operações</h3>
-                {history.length > 0 && (
-                  <button
-                    onClick={() => setHistory([])}
-                    className="text-xs px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 hover:bg-slate-700"
-                  >
+                {history.length>0 && (
+                  <button onClick={()=>setHistory([])} className="text-xs px-2 py-1 rounded-lg bg-slate-800 border border-slate-600 hover:bg-slate-700">
                     Limpar histórico
                   </button>
                 )}
               </div>
-              <p className="text-slate-400 text-sm mb-2">
-                Educação, não recomendação de investimento.
-              </p>
+              <p className="text-slate-400 text-sm mb-2">Educação, não recomendação de investimento.</p>
               <div className="max-h-[200px] overflow-auto pr-1 space-y-2">
-                {history.length === 0 ? (
+                {history.length===0 ? (
                   <div className="text-slate-400 text-sm">Sem operações por enquanto.</div>
                 ) : (
-                  history.map((h) => (
-                    <div
-                      key={h.id}
-                      className="flex items-center justify-between text-sm border-b border-slate-800 pb-1"
-                    >
+                  history.map(h=>(
+                    <div key={h.id} className="flex items-center justify-between text-sm border-b border-slate-800 pb-1">
                       <span className="text-slate-300">{h.time}</span>
-                      <span className={`${h.side === "Compra" ? "text-emerald-400" : "text-rose-400"}`}>
-                        {h.side}
-                      </span>
-                      <span className="text-slate-300">
-                        {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(h.price)}
-                      </span>
-                      <span className="text-slate-400">
-                        {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(h.amount)}
-                      </span>
+                      <span className={h.side==="Compra" ? "text-emerald-400" : "text-rose-400"}>{h.side}</span>
+                      <span className="text-slate-300">{fmtUSD(h.price)}</span>
+                      <span className="text-slate-400">{fmtUSD(h.amount)}</span>
                     </div>
                   ))
                 )}
@@ -421,44 +364,36 @@ export default function SimuladorPage() {
           </div>
         </section>
 
-        {/* Direita: conta + resumo */}
         <aside className="space-y-4">
           <div className="rounded-2xl bg-slate-900/60 border border-slate-700 p-4">
             <h3 className="font-semibold text-slate-100 mb-2">Sua conta (demo)</h3>
-            <StatRow label="Saldo" value={formatUSD(balance)} />
+            <StatRow label="Saldo" value={fmtUSD(balance)} />
             <StatRow label="Quantidade" value={qty.toFixed(8)} />
-            <StatRow label="Valor da posição" value={formatUSD(positionValue)} />
+            <StatRow label="Valor da posição" value={fmtUSD(positionValue)} />
             <StatRow
               label="P&L (não realizado)"
-              value={`${unrealized >= 0 ? "+" : ""}${formatUSD(unrealized)}`}
-              accent={unrealized >= 0 ? "text-emerald-400" : "text-rose-400"}
+              value={`${unrealized>=0?"+":""}${fmtUSD(unrealized)}`}
+              accent={unrealized>=0?"text-emerald-400":"text-rose-400"}
             />
           </div>
 
           <div className="rounded-2xl bg-slate-900/60 border border-slate-700 p-4">
             <h3 className="font-semibold text-slate-100 mb-2">Resumo</h3>
             <StatRow label="Operações" value={stats.trades} />
-            <StatRow
-              label="Lucro acumulado"
-              value={`${stats.totalPnl >= 0 ? "+" : ""}${formatUSD(stats.totalPnl)}`}
-              accent={stats.totalPnl >= 0 ? "text-emerald-400" : "text-rose-400"}
-            />
+            <StatRow label="Lucro acumulado" value={`${stats.totalPnl>=0?"+":""}${fmtUSD(stats.totalPnl)}`} accent={stats.totalPnl>=0?"text-emerald-400":"text-rose-400"} />
             <StatRow label="Taxa de acerto" value={`${stats.hitRate.toFixed(0)}%`} />
             <SharePnLButton stats={stats} />
           </div>
 
           <div className="rounded-2xl bg-slate-900/60 border border-slate-700 p-4">
-            <button
-              onClick={() => setShowTutorial(true)}
-              className="w-full rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 py-2"
-            >
+            <button onClick={()=>setShowTutorial(true)} className="w-full rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 py-2">
               Ver tutorial novamente
             </button>
           </div>
         </aside>
       </main>
 
-      <TutorialModal open={showTutorial} onClose={() => setShowTutorial(false)} />
+      <TutorialModal open={showTutorial} onClose={()=>setShowTutorial(false)} />
     </div>
   );
 }
