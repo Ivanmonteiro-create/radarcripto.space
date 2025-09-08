@@ -100,3 +100,29 @@ a:hover { text-decoration: underline; }
 @media (min-width: 1024px) {
   .pro-sim .sim-grid { grid-template-columns: minmax(0, 1fr) 360px; }
 }
+/* base escura coerente em todas as páginas */
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  background: #020617; /* slate-950 */
+  min-height: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* scroll mais discreto no histórico */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #334155; /* slate-700 */
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
