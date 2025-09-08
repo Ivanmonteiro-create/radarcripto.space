@@ -1,17 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
+/* =========================
+   CONFIG
+   ========================= */
 const SYMBOLS = [
-  { code: "BINANCE:BTCUSDT", label: "Bitcoin (BTC)" },
-  { code: "BINANCE:ETHUSDT", label: "Ethereum (ETH)" },
-  { code: "BINANCE:SOLUSDT", label: "Solana (SOL)" },
-  { code: "BINANCE:XRPUSDT", label: "XRP (XRP)" },
-  { code: "BINANCE:ADAUSDT", label: "Cardano (ADA)" },
-  { code: "BINANCE:LINKUSDT", label: "Chainlink (LINK)" },
-  { code: "BINANCE:DOGEUSDT", label: "Dogecoin (DOGE)" },
-  { code: "BINANCE:BNBUSDT", label: "BNB (BNB)" },
+  { tv: "BINANCE:BTCUSDT", stream: "btcusdt", label: "Bitcoin (BTC)" },
+  { tv: "BINANCE:ETHUSDT", stream: "ethusdt", label: "Ethereum (ETH)" },
+  { tv: "BINANCE:SOLUSDT", stream: "solusdt", label: "Solana (SOL)" },
+  { tv: "BINANCE:XRPUSDT", stream: "xrpusdt", label: "XRP (XRP)" },
+  { tv: "BINANCE:ADAUSDT", stream: "adausdt", label: "Cardano (ADA)" },
+  { tv: "BINANCE:LINKUSDT", stream: "linkusdt", label: "Chainlink (LINK)" },
+  { tv: "BINANCE:DOGEUSDT", stream: "dogeusdt", label: "Dogecoin (DOGE)" },
+  { tv: "BINANCE:BNBUSDT", stream: "bnbusdt", label: "BNB (BNB)" },
 ];
 
 const INDICATOR_NAMES = {
@@ -21,42 +24,45 @@ const INDICATOR_NAMES = {
   ema: "Moving Average Exponential",
 };
 
+const CURRENCY = (n) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+
+/* =========================
+   PAGE
+   ========================= */
 export default function SimuladorPage() {
-  const [symbol, setSymbol] = useState(SYMBOLS[0].code);
+  const [symbol, setSymbol] = useState(SYMBOLS[0]);
   const [statusMsg, setStatusMsg] = useState("Carregando gráfico...");
   const [chartReady, setChartReady] = useState(false);
 
-  const wrapperRef = useRef(null);
-  const chartBoxRef = useRef(null);
-  const containerIdRef = useRef(`tv_chart_${Math.random().toString(36).slice(2)}`);
+  // preço em tempo real
+  const [price, setPrice] = useState(0);
+
+  // conta demo / posição
+  const [cash, setCash] = useState(10000); // USDT
+  const [orderUSDT, setOrderUSDT] = useState(100);
+  const [posQty, setPosQty] = useState(0); // quantidade em cripto
+  const [avgPrice, setAvgPrice] = useState(0); // preço médio
+  const [history, setHistory] = useState([]); // {time, side, qty, price, value}
+
+  // refs TV
+  const containerId = useMemo(
+    () => `tv_${Math.random().toString(36).slice(2)}`,
+    []
+  );
   const widgetRef = useRef(null);
-  const studiesRef = useRef({}); // guarda ids dos indicadores ativos
+  const studiesRef = useRef({});
 
-  // Alturas responsivas sem precisar mexer em CSS global
-  const chartStyles = {
-    height: "clamp(420px, 62vh, 74vh)", // garante grande e sem ultrapassar viewport
-    width: "100%",
-    borderRadius: "14px",
-    overflow: "hidden",
-    background: "#0c1424",
-    border: "1px solid rgba(255,255,255,0.06)",
-  };
-
-  const panelStyles = {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr 1fr 1fr",
-    gap: "12px",
-  };
-
-  // carrega TradingView e instancia o widget
+  /* -------------------------
+     TradingView loader
+     ------------------------- */
   useEffect(() => {
     let cancelled = false;
 
-    function initWidget() {
+    const init = () => {
       if (cancelled) return;
-      if (!chartBoxRef.current) return;
 
-      // remove widget anterior (troca de símbolo)
+      // Remove anterior
       if (widgetRef.current?.remove) {
         try { widgetRef.current.remove(); } catch {}
       }
@@ -64,25 +70,21 @@ export default function SimuladorPage() {
       const create = () => {
         try {
           const w = new window.TradingView.widget({
-            container_id: containerIdRef.current,
-            symbol,
+            container_id: containerId,
+            symbol: symbol.tv,
             interval: "5",
-            autosize: true,             // faz ocupar 100% do box
-            timezone: "Etc/UTC",
+            autosize: true,
             theme: "dark",
+            timezone: "Etc/UTC",
             style: "1",
             locale: "br",
-            allow_symbol_change: false,
-            hide_top_toolbar: false,
             hide_side_toolbar: false,
+            hide_top_toolbar: false,
+            allow_symbol_change: false,
             studies: [],
             withdateranges: true,
-            details: false,
-            hotlist: false,
-            calendar: false,
-            disabled_features: ["header_saveload"], // reduz ruído
+            disabled_features: ["header_saveload"],
           });
-
           widgetRef.current = w;
           setStatusMsg("");
           w.onChartReady(() => {
@@ -112,20 +114,50 @@ export default function SimuladorPage() {
           .then(() => create())
           .catch(() => setStatusMsg("Falha ao carregar TradingView."));
       }
-    }
+    };
 
-    initWidget();
+    init();
 
     return () => {
       cancelled = true;
+      setChartReady(false);
       if (widgetRef.current?.remove) {
         try { widgetRef.current.remove(); } catch {}
       }
-      setChartReady(false);
+    };
+  }, [symbol, containerId]);
+
+  /* -------------------------
+     Binance miniTicker WebSocket
+     ------------------------- */
+  useEffect(() => {
+    let ws;
+    const url = `wss://stream.binance.com:9443/ws/${symbol.stream}@miniTicker`;
+
+    try {
+      ws = new WebSocket(url);
+      ws.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          if (data?.c) setPrice(parseFloat(data.c));
+        } catch {}
+      };
+      ws.onerror = () => {
+        // queda de WS não deve quebrar a página
+        console.warn("WS Binance erro");
+      };
+    } catch (e) {
+      console.warn("WS Binance não pôde iniciar", e);
+    }
+
+    return () => {
+      try { ws && ws.close(); } catch {}
     };
   }, [symbol]);
 
-  // toggle de indicadores com fallback seguro
+  /* -------------------------
+     Indicadores (toggle)
+     ------------------------- */
   const toggleIndicator = async (key) => {
     const w = widgetRef.current;
     if (!w || !chartReady) return;
@@ -146,19 +178,79 @@ export default function SimuladorPage() {
     }
   };
 
+  /* -------------------------
+     Ações: comprar / vender
+     ------------------------- */
+  const qtyFromUSDT = price > 0 ? orderUSDT / price : 0;
+
+  const buy = () => {
+    if (price <= 0 || orderUSDT <= 0 || orderUSDT > cash) return;
+
+    const qty = orderUSDT / price;
+    const newQty = posQty + qty;
+    const newAvg =
+      posQty > 0 ? (avgPrice * posQty + price * qty) / newQty : price;
+
+    setPosQty(newQty);
+    setAvgPrice(newAvg);
+    setCash((c) => c - orderUSDT);
+    setHistory((h) => [
+      { time: new Date().toLocaleTimeString(), side: "Compra", qty, price, value: orderUSDT },
+      ...h,
+    ]);
+  };
+
+  const sell = () => {
+    if (price <= 0 || orderUSDT <= 0 || posQty <= 0) return;
+
+    const qty = Math.min(posQty, orderUSDT / price);
+    const value = qty * price;
+    const realized = (price - avgPrice) * qty;
+
+    setPosQty((q) => q - qty);
+    setCash((c) => c + value);
+    setHistory((h) => [
+      { time: new Date().toLocaleTimeString(), side: "Venda", qty, price, value },
+      ...h,
+    ]);
+
+    // se zerou posição, zera preço médio
+    setAvgPrice((prev) => {
+      const q = posQty - qty;
+      return q > 0 ? prev : 0;
+    });
+  };
+
+  const resetAll = () => {
+    setCash(10000);
+    setOrderUSDT(100);
+    setPosQty(0);
+    setAvgPrice(0);
+    setHistory([]);
+  };
+
+  /* -------------------------
+     Derivados
+     ------------------------- */
+  const positionValue = posQty * price;
+  const unrealizedPL = posQty > 0 ? (price - avgPrice) * posQty : 0;
+  const totalEquity = cash + positionValue;
+
+  /* -------------------------
+     UI
+     ------------------------- */
   return (
     <main
-      ref={wrapperRef}
       style={{
         minHeight: "100vh",
-        padding: "14px",
+        padding: 14,
         background:
           "radial-gradient(1200px 600px at 50% -10%, rgba(66,153,255,0.12), transparent 60%), #0a1020",
         color: "rgba(255,255,255,0.9)",
       }}
     >
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-        {/* Top bar */}
+        {/* Barra do topo */}
         <div
           style={{
             display: "flex",
@@ -173,8 +265,11 @@ export default function SimuladorPage() {
 
             <select
               aria-label="Escolher ativo"
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value)}
+              value={symbol.tv}
+              onChange={(e) => {
+                const next = SYMBOLS.find((s) => s.tv === e.target.value) || SYMBOLS[0];
+                setSymbol(next);
+              }}
               style={{
                 background: "#0f1830",
                 color: "white",
@@ -184,7 +279,7 @@ export default function SimuladorPage() {
               }}
             >
               {SYMBOLS.map((s) => (
-                <option key={s.code} value={s.code}>
+                <option key={s.tv} value={s.tv}>
                   {s.label}
                 </option>
               ))}
@@ -227,9 +322,19 @@ export default function SimuladorPage() {
           </div>
         </div>
 
-        {/* CHART */}
-        <section ref={chartBoxRef} style={chartStyles}>
-          <div id={containerIdRef.current} style={{ width: "100%", height: "100%" }} />
+        {/* Gráfico */}
+        <section
+          style={{
+            position: "relative",
+            height: "clamp(420px, 62vh, 74vh)",
+            width: "100%",
+            borderRadius: 14,
+            overflow: "hidden",
+            background: "#0c1424",
+            border: "1px solid rgba(255,255,255,0.06)",
+          }}
+        >
+          <div id={containerId} style={{ width: "100%", height: "100%" }} />
           {!!statusMsg && (
             <div
               style={{
@@ -246,25 +351,207 @@ export default function SimuladorPage() {
           )}
         </section>
 
-        {/* PAINEL DE AÇÕES (sem mudar sua lógica atual) */}
+        {/* Painel de Trader */}
         <section
           style={{
             marginTop: 14,
-            padding: 14,
-            background: "linear-gradient(180deg,#0c1424 0%, #0b1120 100%)",
-            border: "1px solid rgba(255,255,255,0.06)",
-            borderRadius: 14,
+            display: "grid",
+            gridTemplateColumns: "1.2fr 1fr 1fr",
+            gap: 12,
           }}
         >
-          <div style={panelStyles}>
-            {/* Coloque aqui seus elementos atuais do painel (saldo, P&L, tamanho da ordem, comprar/vender etc.) 
-                Mantive em branco para não conflitar com sua lógica; o importante aqui é o gráfico ocupar bem o topo. */}
-            <div style={{ gridColumn: "1 / -1", opacity: 0.7, textAlign: "center" }}>
-              Painel de ações — mantenha seu conteúdo atual aqui (comprar, vender, P&L, etc.).
+          {/* Coluna A: Ações */}
+          <div
+            style={{
+              background: "linear-gradient(180deg,#0c1424 0%, #0b1120 100%)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: 14,
+              padding: 14,
+            }}
+          >
+            <h4 style={{ margin: "0 0 10px 0" }}>Ações</h4>
+            <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 6 }}>
+              Preço atual: <b>{price > 0 ? CURRENCY(price) : "—"}</b>
             </div>
+
+            <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
+              Tamanho da ordem (USDT)
+            </label>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={orderUSDT}
+              onChange={(e) => setOrderUSDT(Math.max(1, Number(e.target.value || 1)))}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.2)",
+                background: "#0f1830",
+                color: "white",
+                marginBottom: 10,
+              }}
+            />
+
+            <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 10 }}>
+              ≈ {qtyFromUSDT.toFixed(6)} {symbol.label.split(" ")[0]}
+            </div>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={buy}
+                disabled={price <= 0 || orderUSDT <= 0 || orderUSDT > cash}
+                style={{
+                  flex: 1,
+                  background: "#17c964",
+                  color: "#042312",
+                  border: "none",
+                  borderRadius: 12,
+                  padding: "12px 14px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  opacity: price <= 0 || orderUSDT > cash ? 0.6 : 1,
+                }}
+              >
+                Comprar
+              </button>
+              <button
+                onClick={sell}
+                disabled={price <= 0 || posQty <= 0}
+                style={{
+                  flex: 1,
+                  background: "#f31260",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 12,
+                  padding: "12px 14px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  opacity: price <= 0 || posQty <= 0 ? 0.6 : 1,
+                }}
+              >
+                Vender
+              </button>
+            </div>
+
+            <button
+              onClick={resetAll}
+              style={{
+                marginTop: 10,
+                width: "100%",
+                background: "#1f2937",
+                color: "white",
+                border: "1px solid rgba(255,255,255,0.15)",
+                borderRadius: 10,
+                padding: "10px 12px",
+                cursor: "pointer",
+              }}
+            >
+              Resetar
+            </button>
+          </div>
+
+          {/* Coluna B: Conta / Posição */}
+          <div
+            style={{
+              background: "linear-gradient(180deg,#0c1424 0%, #0b1120 100%)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: 14,
+              padding: 14,
+            }}
+          >
+            <h4 style={{ margin: "0 0 10px 0" }}>Sua conta (demo)</h4>
+            <div style={{ display: "grid", gap: 8, fontSize: 14 }}>
+              <Row label="Saldo" value={CURRENCY(cash)} />
+              <Row label="Quantidade" value={posQty.toFixed(6)} />
+              <Row label="Valor da posição" value={CURRENCY(positionValue)} />
+              <Row
+                label="P&L (não realizado)"
+                value={CURRENCY(unrealizedPL)}
+                valueColor={unrealizedPL >= 0 ? "#17c964" : "#f31260"}
+              />
+              <div
+                style={{
+                  height: 8,
+                  background: "rgba(255,255,255,0.08)",
+                  borderRadius: 999,
+                  overflow: "hidden",
+                  marginTop: 4,
+                }}
+              >
+                <div
+                  style={{
+                    width: `${Math.max(
+                      5,
+                      Math.min(95, (Math.abs(unrealizedPL) / (cash + 1)) * 100)
+                    )}%`,
+                    height: "100%",
+                    background: unrealizedPL >= 0 ? "#17c964" : "#f31260",
+                  }}
+                />
+              </div>
+              <Row label="Equity total" value={CURRENCY(totalEquity)} />
+            </div>
+          </div>
+
+          {/* Coluna C: Histórico */}
+          <div
+            style={{
+              background: "linear-gradient(180deg,#0c1424 0%, #0b1120 100%)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: 14,
+              padding: 14,
+              minHeight: 160,
+              maxHeight: 280,
+              overflow: "auto",
+            }}
+          >
+            <h4 style={{ margin: "0 0 10px 0" }}>Histórico de operações</h4>
+            {history.length === 0 ? (
+              <div style={{ fontSize: 13, opacity: 0.7 }}>
+                Sem operações por enquanto. Faça uma compra ou venda para começar.
+              </div>
+            ) : (
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
+                {history.map((t, i) => (
+                  <li
+                    key={i}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "auto auto 1fr auto",
+                      gap: 8,
+                      fontSize: 13,
+                      alignItems: "center",
+                    }}
+                  >
+                    <span style={{ opacity: 0.6 }}>{t.time}</span>
+                    <span style={{ color: t.side === "Compra" ? "#17c964" : "#f31260" }}>
+                      {t.side}
+                    </span>
+                    <span>
+                      {t.qty.toFixed(6)} @ {CURRENCY(t.price)}
+                    </span>
+                    <span style={{ opacity: 0.8 }}>{CURRENCY(t.value)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </section>
       </div>
     </main>
+  );
+}
+
+/* =========================
+   Helpers UI
+   ========================= */
+function Row({ label, value, valueColor }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+      <span style={{ opacity: 0.75 }}>{label}</span>
+      <span style={{ fontWeight: 700, color: valueColor || "white" }}>{value}</span>
+    </div>
   );
 }
