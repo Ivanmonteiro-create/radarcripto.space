@@ -1,0 +1,81 @@
+/* === Overrides focados em botões/links – seguros e isolados === */
+
+/* Verde vibrante padrão */
+:root {
+  --rc-green: #18c964;
+  --rc-green-text: #07131b;
+  --rc-green-shadow: 0 10px 24px rgba(24, 201, 100, 0.28);
+}
+
+/* 1) DESTACAR no menu: Planos e Acessar simulador */
+nav a[href="/planos"],
+nav a[href="/simulador"],
+.nav a[href="/planos"],
+.nav a[href="/simulador"],
+header nav a[href="/planos"],
+header nav a[href="/simulador"] {
+  color: var(--rc-green-text) !important;
+  background: var(--rc-green) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: var(--rc-green-shadow) !important;
+  font-weight: 800 !important;
+  border-radius: 999px !important;
+}
+
+/* Hover/focus acessível */
+nav a[href="/planos"]:hover,
+nav a[href="/simulador"]:hover,
+.nav a[href="/planos"]:hover,
+.nav a[href="/simulador"]:hover,
+header nav a[href="/planos"]:hover,
+header nav a[href="/simulador"]:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+/* 2) CTAs genéricos (usados na página /planos) */
+.cta,
+.pill-primary,
+.planos-wrap .pill-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-weight: 800;
+  text-decoration: none !important;
+  background: var(--rc-green);
+  color: var(--rc-green-text) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: var(--rc-green-shadow);
+  transition: transform .12s ease, filter .12s ease;
+  white-space: nowrap;
+}
+.cta:hover,
+.pill-primary:hover,
+.planos-wrap .pill-primary:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+/* Estados de foco visíveis */
+.cta:focus-visible,
+.pill-primary:focus-visible,
+nav a[href="/planos"]:focus-visible,
+nav a[href="/simulador"]:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+/* Não interferir em outros links do menu */
+nav a:not([href="/planos"]):not([href="/simulador"]) {
+  /* nenhuma mudança */
+}
+
+/* (Opcional) título “Mais popular” da carta Pro */
+.planos-wrap .badge {
+  background: var(--rc-green);
+  color: var(--rc-green-text);
+  font-weight: 800;
+}
