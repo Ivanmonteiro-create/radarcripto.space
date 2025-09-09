@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
-/* ---------- Ativos disponíveis ---------- */
+/* ===== Ativos ===== */
 const SYMBOLS = [
   { tv: "BINANCE:BTCUSDT", stream: "btcusdt", label: "Bitcoin (BTC)" },
   { tv: "BINANCE:ETHUSDT", stream: "ethusdt", label: "Ethereum (ETH)" },
@@ -19,7 +19,6 @@ const money = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 
 export default function SimuladorPage() {
-  /* ---------- estado base ---------- */
   const [symbol, setSymbol] = useState(SYMBOLS[0]);
   const [statusMsg, setStatusMsg] = useState("Carregando gráfico...");
   const [useIframe, setUseIframe] = useState(false);
@@ -31,42 +30,39 @@ export default function SimuladorPage() {
   const [avgPrice, setAvgPrice] = useState(0);
   const [history, setHistory] = useState([]);
 
-  /* ---------- TradingView refs ---------- */
   const containerId = useMemo(() => `tv_${Math.random().toString(36).slice(2)}`, []);
   const widgetRef = useRef(null);
   const shellRef = useRef(null);
 
-  /* ---------- Fullscreen ---------- */
+  /* ===== Tela cheia ===== */
   const [isFull, setIsFull] = useState(false);
   const toggleFull = async () => {
     const el = shellRef.current;
     if (!el) return;
-    try {
-      if (!document.fullscreenElement) {
-        await el.requestFullscreen();
-        setIsFull(true);
-      } else {
-        await document.exitFullscreen();
-        setIsFull(false);
-      }
-    } catch {}
+    if (!document.fullscreenElement) {
+      await el.requestFullscreen();
+      setIsFull(true);
+    } else {
+      await document.exitFullscreen();
+      setIsFull(false);
+    }
   };
   useEffect(() => {
     const onChange = () => setIsFull(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
-  useEffect(() => {
     const onKey = (e) => {
       const k = e.key.toLowerCase();
       if (k === "f") toggleFull();
       if ((k === "x" || k === "escape") && document.fullscreenElement) document.exitFullscreen();
     };
+    document.addEventListener("fullscreenchange", onChange);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      window.removeEventListener("keydown", onKey);
+    };
   }, []);
 
-  /* ---------- Monta TradingView; se falhar, cai para IFRAME ---------- */
+  /* ===== TradingView ===== */
   useEffect(() => {
     let cancelled = false;
 
@@ -87,7 +83,7 @@ export default function SimuladorPage() {
           style: "1",
           locale: "br",
           hide_side_toolbar: false,
-          hide_top_toolbar: false,
+          hide_top_toolbar: false, // ← garante toolbar visível
           allow_symbol_change: false,
           withdateranges: true,
           studies: [],
@@ -97,8 +93,8 @@ export default function SimuladorPage() {
         setStatusMsg("");
       } catch (e) {
         console.error("TV widget error:", e);
-        setStatusMsg("Não foi possível iniciar o gráfico.");
         setUseIframe(true);
+        setStatusMsg("");
       }
     };
 
@@ -118,12 +114,10 @@ export default function SimuladorPage() {
           document.head.appendChild(s);
         });
       }
-      window.__tvScriptLoading
-        .then(startWidget)
-        .catch(() => {
-          setStatusMsg("Não foi possível iniciar o gráfico.");
-          setUseIframe(true);
-        });
+      window.__tvScriptLoading.then(startWidget).catch(() => {
+        setUseIframe(true);
+        setStatusMsg("");
+      });
 
       // fallback defensivo
       setTimeout(() => {
@@ -146,7 +140,7 @@ export default function SimuladorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol, containerId]);
 
-  /* ---------- WebSocket preço ---------- */
+  /* ===== Preço (WebSocket Binance) ===== */
   useEffect(() => {
     let ws;
     try {
@@ -158,7 +152,7 @@ export default function SimuladorPage() {
     return () => { try { ws && ws.close(); } catch {} };
   }, [symbol]);
 
-  /* ---------- Trader simples ---------- */
+  /* ===== Trader ===== */
   const buy = () => {
     if (price <= 0 || orderUSDT <= 0 || orderUSDT > cash) return;
     const qty = orderUSDT / price;
@@ -178,15 +172,13 @@ export default function SimuladorPage() {
     setHistory((h) => [{ time: new Date().toLocaleTimeString(), side: "Venda", qty, price, value }, ...h]);
     setAvgPrice((prev) => (posQty - qty > 0 ? prev : 0));
   };
-  const resetAll = () => {
-    setCash(10000); setOrderUSDT(100); setPosQty(0); setAvgPrice(0); setHistory([]);
-  };
+  const resetAll = () => { setCash(10000); setOrderUSDT(100); setPosQty(0); setAvgPrice(0); setHistory([]); };
 
   const positionValue = posQty * price;
   const unrealizedPL = posQty > 0 ? (price - avgPrice) * posQty : 0;
   const totalEquity = cash + positionValue;
 
-  /* ---------- URL do fallback IFRAME ---------- */
+  /* ===== IFRAME fallback ===== */
   const iframeURL = useMemo(() => {
     const u = new URL("https://s.tradingview.com/widgetembed/");
     u.searchParams.set("symbol", symbol.tv);
@@ -204,39 +196,33 @@ export default function SimuladorPage() {
     <main style={pageBg}>
       <div style={wrap}>
         <div style={grid}>
-          {/* ======== GRÁFICO ======== */}
+          {/* ===== GRÁFICO ===== */}
           <section ref={shellRef} style={chartShell}>
-            {/* Barra superior própria (NÃO cobre o header do TradingView) */}
-            <div style={topBar}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 12, opacity: 0.7 }}>Ativo</span>
-                <select
-                  value={symbol.tv}
-                  onChange={(e) => {
-                    const next = SYMBOLS.find((s) => s.tv === e.target.value) || SYMBOLS[0];
-                    setSymbol(next);
-                  }}
-                  style={selectStyle}
-                  className="no-outline"
-                  aria-label="Escolher ativo"
-                >
-                  {SYMBOLS.map((s) => (
-                    <option key={s.tv} value={s.tv}>{s.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={toggleFull} style={chipPrimary} className="no-outline">
-                  {isFull ? "Sair Tela Cheia (X/Esc)" : "Tela Cheia (F)"}
-                </button>
-                <Link href="/" style={chipSuccess} className="no-outline">
-                  Voltar ao Início
-                </Link>
-              </div>
+            {/* Barra fina: seletor de ativo; NÃO cobre toolbar do TV */}
+            <div style={thinBar}>
+              <span style={{ fontSize: 12, opacity: 0.7, marginRight: 8 }}>Ativo</span>
+              <select
+                value={symbol.tv}
+                onChange={(e) => setSymbol(SYMBOLS.find((s) => s.tv === e.target.value) || SYMBOLS[0])}
+                style={selectStyle}
+                className="no-outline"
+                aria-label="Escolher ativo"
+              >
+                {SYMBOLS.map((s) => (
+                  <option key={s.tv} value={s.tv}>{s.label}</option>
+                ))}
+              </select>
             </div>
 
-            {/* área do gráfico começa DEPOIS da barra superior (evita sobreposição) */}
+            {/* Dock compacto (top-right), ao lado da toolbar do TV (sem cobrir) */}
+            <div style={controlDock}>
+              <button onClick={toggleFull} style={chipPrimary} className="no-outline">
+                {isFull ? "Sair Tela Cheia (X/Esc)" : "Tela Cheia (F)"}
+              </button>
+              <Link href="/" style={chipSuccess} className="no-outline">Voltar ao Início</Link>
+            </div>
+
+            {/* Área do gráfico */}
             <div style={chartArea}>
               {useIframe ? (
                 <iframe
@@ -255,7 +241,7 @@ export default function SimuladorPage() {
             </div>
           </section>
 
-          {/* ======== PAINEL DIREITO (vai até o rodapé) ======== */}
+          {/* ===== PAINEL DIREITO ===== */}
           <aside style={rightCol}>
             <Card title="Ações">
               <div style={muted}>Preço atual: <b>{price > 0 ? money(price) : "—"}</b></div>
@@ -307,8 +293,9 @@ export default function SimuladorPage() {
         </div>
       </div>
 
-      {/* remove “bolinha branca” (outline) de foco */}
+      {/* remove “bolinha branca” e toques azuis */}
       <style jsx global>{`
+        * { -webkit-tap-highlight-color: transparent; }
         .no-outline { outline: none !important; box-shadow: none !important; }
         button.no-outline:focus, select.no-outline:focus, input.no-outline:focus { outline: none !important; box-shadow: none !important; }
       `}</style>
@@ -316,7 +303,7 @@ export default function SimuladorPage() {
   );
 }
 
-/* ---------- componentes ---------- */
+/* ===== componentes ===== */
 function Card({ title, children }) {
   return (
     <div style={card}>
@@ -334,7 +321,7 @@ function Row({ label, value, valueColor }) {
   );
 }
 
-/* ---------- estilos ---------- */
+/* ===== estilos ===== */
 const pageBg = {
   minHeight: "100vh",
   background:
@@ -342,11 +329,14 @@ const pageBg = {
   color: "rgba(255,255,255,0.92)",
 };
 const wrap = { maxWidth: 1400, margin: "0 auto", padding: 12 };
+
+/* grid fix: garante que o gráfico não “invade” a coluna direita */
 const grid = {
   display: "grid",
-  gridTemplateColumns: "1fr 320px",
+  gridTemplateColumns: "1fr 340px",
   gap: 12,
-  height: "calc(100vh - 24px)", // ocupa a viewport menos o padding externo
+  height: "calc(100vh - 24px)",
+  position: "relative",
 };
 
 const chartShell = {
@@ -356,24 +346,27 @@ const chartShell = {
   borderRadius: 14,
   overflow: "hidden",
   height: "100%",
+  zIndex: 1, // abaixo da coluna direita
 };
 
-const TOP_BAR_H = 44;
-
-const topBar = {
+/* barra fina superior (apenas seletor) */
+const thinBar = {
   position: "absolute",
-  left: 0,
-  right: 0,
-  top: 0,
-  height: TOP_BAR_H,
+  left: 8,
+  top: 6,
+  zIndex: 3,
   display: "flex",
   alignItems: "center",
-  justifyContent: "space-between",
-  padding: "8px 10px",
+};
+
+const controlDock = {
+  position: "absolute",
+  right: 8,
+  top: 6,
+  zIndex: 3, // acima do gráfico, mas não cobre a toolbar do TV
+  display: "flex",
   gap: 8,
-  background: "linear-gradient(180deg, rgba(12,20,36,0.95) 0%, rgba(12,20,36,0.65) 100%)",
-  borderBottom: "1px solid rgba(255,255,255,0.06)",
-  zIndex: 3,
+  alignItems: "center",
 };
 
 const chartArea = {
@@ -381,7 +374,7 @@ const chartArea = {
   left: 0,
   right: 0,
   bottom: 0,
-  top: TOP_BAR_H, // começa depois da barra → não cobre o header do TV
+  top: 0, // começa no topo do container; a toolbar do TV fica dentro e visível
 };
 
 const chartStatus = {
@@ -394,6 +387,8 @@ const rightCol = {
   flexDirection: "column",
   gap: 12,
   height: "100%",
+  position: "relative",
+  zIndex: 5, // garante clique nos botões do painel
 };
 
 const card = {
