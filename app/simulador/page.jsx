@@ -22,7 +22,6 @@ export default function SimuladorPage() {
   /* ---------- estado base ---------- */
   const [symbol, setSymbol] = useState(SYMBOLS[0]);
   const [statusMsg, setStatusMsg] = useState("Carregando gráfico...");
-  const [chartReady, setChartReady] = useState(false);
   const [useIframe, setUseIframe] = useState(false);
 
   const [price, setPrice] = useState(0);
@@ -35,12 +34,12 @@ export default function SimuladorPage() {
   /* ---------- TradingView refs ---------- */
   const containerId = useMemo(() => `tv_${Math.random().toString(36).slice(2)}`, []);
   const widgetRef = useRef(null);
-  const chartShellRef = useRef(null);
+  const shellRef = useRef(null);
 
   /* ---------- Fullscreen ---------- */
   const [isFull, setIsFull] = useState(false);
   const toggleFull = async () => {
-    const el = chartShellRef.current;
+    const el = shellRef.current;
     if (!el) return;
     try {
       if (!document.fullscreenElement) {
@@ -61,8 +60,7 @@ export default function SimuladorPage() {
     const onKey = (e) => {
       const k = e.key.toLowerCase();
       if (k === "f") toggleFull();
-      if (k === "x" && document.fullscreenElement) document.exitFullscreen();
-      if (k === "escape" && document.fullscreenElement) document.exitFullscreen();
+      if ((k === "x" || k === "escape") && document.fullscreenElement) document.exitFullscreen();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -73,7 +71,6 @@ export default function SimuladorPage() {
     let cancelled = false;
 
     const cleanup = () => {
-      setChartReady(false);
       if (widgetRef.current?.remove) { try { widgetRef.current.remove(); } catch {} }
       widgetRef.current = null;
     };
@@ -98,10 +95,6 @@ export default function SimuladorPage() {
         });
         widgetRef.current = w;
         setStatusMsg("");
-        w.onChartReady(() => {
-          if (cancelled) return;
-          setChartReady(true);
-        });
       } catch (e) {
         console.error("TV widget error:", e);
         setStatusMsg("Não foi possível iniciar o gráfico.");
@@ -132,6 +125,7 @@ export default function SimuladorPage() {
           setUseIframe(true);
         });
 
+      // fallback defensivo
       setTimeout(() => {
         if (!window.TradingView?.widget && !useIframe && !cancelled) {
           setUseIframe(true);
@@ -206,40 +200,43 @@ export default function SimuladorPage() {
     return u.toString();
   }, [symbol]);
 
-  /* ---------- UI ---------- */
   return (
     <main style={pageBg}>
-      {/* grid com altura de viewport para alinhar fundos na mesma linha do rodapé */}
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: 12, height: "calc(100vh - 24px)" }}>
-        <div style={gridWrap}>
+      <div style={wrap}>
+        <div style={grid}>
           {/* ======== GRÁFICO ======== */}
-          <section ref={chartShellRef} style={chartShell}>
-            {/* seletor de ativo fora da barra do TradingView (não cobre a área do topo) */}
-            <div style={symbolDock}>
-              <label style={{ fontSize: 11, opacity: 0.7 }}>Gráfico —</label>
-              <select
-                value={symbol.tv}
-                onChange={(e) => {
-                  const next = SYMBOLS.find((s) => s.tv === e.target.value) || SYMBOLS[0];
-                  setSymbol(next);
-                }}
-                style={selectStyle}
-                aria-label="Escolher ativo"
-              >
-                {SYMBOLS.map((s) => (
-                  <option key={s.tv} value={s.tv}>{s.label}</option>
-                ))}
-              </select>
+          <section ref={shellRef} style={chartShell}>
+            {/* Barra superior própria (NÃO cobre o header do TradingView) */}
+            <div style={topBar}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 12, opacity: 0.7 }}>Ativo</span>
+                <select
+                  value={symbol.tv}
+                  onChange={(e) => {
+                    const next = SYMBOLS.find((s) => s.tv === e.target.value) || SYMBOLS[0];
+                    setSymbol(next);
+                  }}
+                  style={selectStyle}
+                  className="no-outline"
+                  aria-label="Escolher ativo"
+                >
+                  {SYMBOLS.map((s) => (
+                    <option key={s.tv} value={s.tv}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={toggleFull} style={chipPrimary} className="no-outline">
+                  {isFull ? "Sair Tela Cheia (X/Esc)" : "Tela Cheia (F)"}
+                </button>
+                <Link href="/" style={chipSuccess} className="no-outline">
+                  Voltar ao Início
+                </Link>
+              </div>
             </div>
 
-            {/* ações rápidas (não cobre a barra superior do TV) */}
-            <div style={floatingActions}>
-              <button onClick={toggleFull} style={chipPrimary} className="no-outline">
-                {isFull ? "Sair Tela Cheia (X/Esc)" : "Tela Cheia (F)"}
-              </button>
-              <Link href="/" style={chipSuccess} className="no-outline">Voltar ao Início</Link>
-            </div>
-
+            {/* área do gráfico começa DEPOIS da barra superior (evita sobreposição) */}
             <div style={chartArea}>
               {useIframe ? (
                 <iframe
@@ -288,12 +285,11 @@ export default function SimuladorPage() {
               <Row label="Equity total" value={money(totalEquity)} />
             </Card>
 
-            {/* ocupa o espaço restante para “colar” o histórico no rodapé */}
             <div style={{ flex: 1 }} />
 
             <Card title="Histórico">
               {history.length === 0 ? (
-                <div style={muted}>Sem operações por enquanto.</div>
+                <div style={muted}>Sem operações por enquanto. Faça uma compra ou venda para começar.</div>
               ) : (
                 <ul style={histList}>
                   {history.map((t, i) => (
@@ -311,7 +307,7 @@ export default function SimuladorPage() {
         </div>
       </div>
 
-      {/* remove “bolinha branca” de foco em botões/inputs (apenas aqui) */}
+      {/* remove “bolinha branca” (outline) de foco */}
       <style jsx global>{`
         .no-outline { outline: none !important; box-shadow: none !important; }
         button.no-outline:focus, select.no-outline:focus, input.no-outline:focus { outline: none !important; box-shadow: none !important; }
@@ -320,7 +316,7 @@ export default function SimuladorPage() {
   );
 }
 
-/* ---------- componentes pequenos ---------- */
+/* ---------- componentes ---------- */
 function Card({ title, children }) {
   return (
     <div style={card}>
@@ -345,68 +341,73 @@ const pageBg = {
     "radial-gradient(1200px 600px at 50% -10%, rgba(66,153,255,0.12), transparent 60%), #0a1020",
   color: "rgba(255,255,255,0.92)",
 };
-const gridWrap = {
+const wrap = { maxWidth: 1400, margin: "0 auto", padding: 12 };
+const grid = {
   display: "grid",
   gridTemplateColumns: "1fr 320px",
   gap: 12,
-  height: "100%", // força as colunas a terem a mesma altura
+  height: "calc(100vh - 24px)", // ocupa a viewport menos o padding externo
 };
+
 const chartShell = {
   position: "relative",
   background: "#0c1424",
   border: "1px solid rgba(255,255,255,0.06)",
   borderRadius: 14,
   overflow: "hidden",
-  height: "100%", // ocupa toda a altura da linha
+  height: "100%",
 };
-const chartArea = { position: "absolute", inset: 0 };
+
+const TOP_BAR_H = 44;
+
+const topBar = {
+  position: "absolute",
+  left: 0,
+  right: 0,
+  top: 0,
+  height: TOP_BAR_H,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "8px 10px",
+  gap: 8,
+  background: "linear-gradient(180deg, rgba(12,20,36,0.95) 0%, rgba(12,20,36,0.65) 100%)",
+  borderBottom: "1px solid rgba(255,255,255,0.06)",
+  zIndex: 3,
+};
+
+const chartArea = {
+  position: "absolute",
+  left: 0,
+  right: 0,
+  bottom: 0,
+  top: TOP_BAR_H, // começa depois da barra → não cobre o header do TV
+};
+
 const chartStatus = {
   position: "absolute", inset: 0, display: "grid", placeItems: "center",
   color: "rgba(255,255,255,0.7)", fontSize: 14,
 };
-/* seletor de símbolo ancorado no canto superior ESQUERDO do gráfico,
-   pequeno e transparente para não cobrir a barra do TradingView */
-const symbolDock = {
-  position: "absolute",
-  top: 10,
-  left: 10,
-  zIndex: 3,
-  display: "flex",
-  gap: 8,
-  alignItems: "center",
-  padding: "6px 8px",
-  background: "rgba(8,12,26,0.45)",
-  border: "1px solid rgba(255,255,255,0.08)",
-  borderRadius: 10,
-  backdropFilter: "blur(4px)",
-  pointerEvents: "auto",
-};
-/* ações flutuantes encostadas à direita, centralizadas verticalmente */
-const floatingActions = {
-  position: "absolute",
-  top: "50%",
-  right: 10,
-  transform: "translateY(-50%)",
-  zIndex: 3,
-  display: "grid",
-  gap: 8,
-};
+
 const rightCol = {
   display: "flex",
   flexDirection: "column",
   gap: 12,
-  height: "100%",      // ocupa a mesma altura do gráfico
+  height: "100%",
 };
+
 const card = {
   background: "linear-gradient(180deg,#0c1424 0%, #0b1120 100%)",
   border: "1px solid rgba(255,255,255,0.06)",
   borderRadius: 14,
   padding: 12,
 };
+
 const row = { display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 6 };
 const label = { display: "block", fontSize: 12, margin: "8px 0 6px" };
 const tiny = { fontSize: 12, opacity: 0.7, marginBottom: 8 };
 const muted = { opacity: 0.75, fontSize: 13 };
+
 const selectStyle = {
   background: "#0f1830",
   color: "white",
@@ -414,6 +415,7 @@ const selectStyle = {
   borderRadius: 10,
   padding: "6px 10px",
 };
+
 const inputStyle = {
   width: "100%",
   padding: "10px 12px",
@@ -422,6 +424,7 @@ const inputStyle = {
   background: "#0f1830",
   color: "white",
 };
+
 const btnBuy = (disabled) => ({
   flex: 1,
   background: "#17c964",
@@ -454,6 +457,7 @@ const btnReset = {
   padding: "10px 12px",
   cursor: "pointer",
 };
+
 const chipPrimary = {
   background: "#0e6bff",
   color: "white",
@@ -473,6 +477,7 @@ const chipSuccess = {
   fontWeight: 700,
   cursor: "pointer",
 };
+
 const histList = { listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 };
 const histItem = {
   display: "grid",
