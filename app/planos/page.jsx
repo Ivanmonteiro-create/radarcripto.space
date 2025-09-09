@@ -1,46 +1,178 @@
+// app/planos/page.jsx
+import Link from "next/link";
+
 export const metadata = {
   title: "Planos — RadarCrypto.space",
-  description: "Conheça os planos e recursos premium do simulador.",
+  description: "Compare os planos e escolha o melhor para você.",
 };
 
 export default function PlanosPage() {
   return (
-    <main className="min-h-[calc(100vh-3.5rem)] bg-slate-900 text-slate-100">
-      <section className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-          💎 Nossos Planos
-        </h1>
-        <p className="mt-3 text-slate-300">
-          Em breve você poderá comparar recursos e escolher o plano ideal.
-        </p>
+    <main className="planos-wrap">
+      <header className="planos-head">
+        <h1>Planos</h1>
+        <Link href="/" className="back-btn" aria-label="Voltar ao Início">
+          Voltar ao Início
+        </Link>
+      </header>
 
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <h2 className="text-xl font-semibold">Gratuito</h2>
-            <ul className="mt-3 list-disc pl-5 text-sm text-slate-300 space-y-1">
-              <li>Simulador com moedas principais</li>
-              <li>Indicadores básicos</li>
-              <li>Histórico local (no navegador)</li>
-            </ul>
-          </div>
-          <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-5">
-            <h2 className="text-xl font-semibold">Pro (em breve)</h2>
-            <ul className="mt-3 list-disc pl-5 text-sm text-slate-300 space-y-1">
-              <li>Salvar sessões na nuvem</li>
-              <li>Mais ativos e timeframes</li>
-              <li>Relatórios e métricas avançadas</li>
-            </ul>
-          </div>
-          <div className="rounded-2xl border border-cyan-400/30 bg-cyan-400/10 p-5">
-            <h2 className="text-xl font-semibold">Institucional (em breve)</h2>
-            <ul className="mt-3 list-disc pl-5 text-sm text-slate-300 space-y-1">
-              <li>Times e salas privadas</li>
-              <li>Exportação de dados</li>
-              <li>Suporte prioritário</li>
-            </ul>
-          </div>
-        </div>
+      <p className="lead">
+        Escolha um plano para estudar, praticar e evoluir com nosso simulador.
+      </p>
+
+      <section className="grid">
+        {/* Free */}
+        <article className="card">
+          <h2>Gratuito</h2>
+          <p className="price">R$ 0/mês</p>
+          <ul className="feat">
+            <li>Simulador com dados ao vivo (BTC, ETH, etc.)</li>
+            <li>Histórico local no navegador</li>
+            <li>Indicadores básicos (RSI, MACD, MME, BB)</li>
+            <li>Suporte comunitário</li>
+          </ul>
+          <Link href="/simulador" className="cta">
+            Começar agora
+          </Link>
+        </article>
+
+        {/* Pro */}
+        <article className="card card--pro">
+          <div className="badge">Mais popular</div>
+          <h2>Pro</h2>
+          <p className="price">R$ 29/mês</p>
+          <ul className="feat">
+            <li>Todas as moedas e intervalos extras</li>
+            <li>Backtests locais e exportação</li>
+            <li>Alertas e metas de estudo</li>
+            <li>Suporte prioritário</li>
+          </ul>
+          <Link href="/simulador" className="cta">
+            Assinar Pro
+          </Link>
+        </article>
+
+        {/* Expert */}
+        <article className="card">
+          <h2>Expert</h2>
+          <p className="price">R$ 79/mês</p>
+          <ul className="feat">
+            <li>Tudo do Pro + cenários avançados</li>
+            <li>Salas privadas e relatórios</li>
+            <li>Mentorias em grupo</li>
+            <li>Atendimento dedicado</li>
+          </ul>
+          <Link href="/simulador" className="cta">
+            Ficar Expert
+          </Link>
+        </article>
       </section>
+
+      <style jsx>{`
+        .planos-wrap {
+          max-width: 1100px;
+          margin: 0 auto;
+          padding: 32px 20px 64px;
+        }
+        .planos-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 8px;
+        }
+        h1 {
+          font-size: 28px;
+          color: #eaf2ff;
+        }
+        .back-btn {
+          background: #18c964;
+          color: #07131b;
+          text-decoration: none;
+          padding: 10px 14px;
+          border-radius: 999px;
+          font-weight: 800;
+          border: 1px solid rgba(0, 0, 0, 0.12);
+          box-shadow: 0 10px 24px rgba(24, 201, 100, 0.25);
+          transition: transform 0.12s ease, filter 0.12s ease;
+          white-space: nowrap;
+        }
+        .back-btn:hover {
+          transform: translateY(-1px);
+          filter: brightness(1.05);
+        }
+        .lead {
+          color: #bcd0ff;
+          margin: 4px 0 24px;
+        }
+        .grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 20px;
+        }
+        .card {
+          background: rgba(10, 18, 28, 0.7);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 16px;
+          padding: 22px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .card--pro {
+          outline: 2px solid rgba(24, 201, 100, 0.45);
+          background: rgba(10, 24, 18, 0.75);
+        }
+        .badge {
+          align-self: flex-start;
+          font-size: 12px;
+          padding: 6px 10px;
+          border-radius: 999px;
+          background: #18c964;
+          color: #07131b;
+          font-weight: 800;
+          margin-bottom: 4px;
+        }
+        h2 {
+          color: #eaf2ff;
+          margin: 0;
+        }
+        .price {
+          color: #9ed7b7;
+          font-weight: 800;
+          margin: 0 0 8px;
+        }
+        .feat {
+          color: #c9d7ff;
+          margin: 0 0 12px;
+          padding-left: 18px;
+        }
+        .feat li + li {
+          margin-top: 6px;
+        }
+        .cta {
+          margin-top: auto;
+          align-self: flex-start;
+          background: #18c964;
+          color: #07131b;
+          text-decoration: none;
+          padding: 10px 14px;
+          border-radius: 10px;
+          font-weight: 800;
+          border: 1px solid rgba(0, 0, 0, 0.12);
+          box-shadow: 0 10px 24px rgba(24, 201, 100, 0.25);
+          transition: transform 0.12s ease, filter 0.12s ease;
+        }
+        .cta:hover {
+          transform: translateY(-1px);
+          filter: brightness(1.05);
+        }
+        @media (max-width: 900px) {
+          .grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
     </main>
   );
 }
