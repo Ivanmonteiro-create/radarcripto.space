@@ -1,48 +1,70 @@
-// components/Navbar.jsx
-"use client";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import React from 'react';
 
 export default function Navbar() {
   const pathname = usePathname();
 
-  const basePill =
-    "inline-flex items-center rounded-full border border-white/15 px-3.5 py-2 text-sm transition";
-  const neutral =
-    "bg-white/5 text-zinc-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20";
-  const green =
-    "bg-emerald-600 text-white hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300";
+  // Oculta a navbar nas rotas do simulador
+  if (pathname?.startsWith('/simulador')) return null;
 
-  // Links do menu
-  const links = [
-    { href: "/", label: "Início", pill: neutral },
-    { href: "/sobre", label: "Sobre", pill: neutral },
-    // ✅ Estes dois ficam VERDES
-    { href: "/planos", label: "Planos", pill: green },
-    { href: "/simulador", label: "Acessar simulador", pill: green },
-    { href: "/contato", label: "Fale com a gente", pill: neutral },
-  ];
+  const baseLinkStyle: React.CSSProperties = {
+    display: 'block',
+    padding: '10px 14px',
+    borderRadius: 12,
+    textDecoration: 'none',
+    color: '#e5e7eb',        // cinza claro
+    fontWeight: 600,
+    lineHeight: 1,
+    background: 'transparent',
+    boxShadow: 'none',
+    transition: 'transform .12s ease, opacity .12s ease',
+  };
+
+  const btnGreen: React.CSSProperties = {
+    ...baseLinkStyle,
+    background: '#16a34a',   // verde forte
+    color: '#0b1112',        // contraste no seu tema escuro
+    boxShadow: '0 0 0 1px rgba(22,163,74,.55) inset, 0 6px 18px rgba(22,163,74,.18)',
+    fontSize: 15,
+  };
+
+  const wrapStyle: React.CSSProperties = {
+    position: 'fixed',
+    right: 18,
+    top: 18,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    zIndex: 40,
+    userSelect: 'none',
+  };
+
+  const hoverStyle = { transform: 'translateY(-1px)', opacity: 0.95 };
 
   return (
-    <nav className="fixed right-4 top-6 z-40 flex flex-wrap gap-2">
-      {links.map(({ href, label, pill }) => {
-        // realce sutil quando a rota está ativa (não muda cor)
-        const active =
-          pathname === href
-            ? "ring-1 ring-white/20"
-            : "";
+    <nav aria-label="Navegação principal" style={wrapStyle}>
+      <Link href="/" style={baseLinkStyle} onMouseEnter={e=>Object.assign(e.currentTarget.style, hoverStyle)} onMouseLeave={e=>Object.assign(e.currentTarget.style, {transform:'none', opacity:'1'})}>
+        Início
+      </Link>
 
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={`${basePill} ${pill} ${active}`}
-            prefetch={false}
-          >
-            {label}
-          </Link>
-        );
-      })}
+      <Link href="/sobre" style={baseLinkStyle} onMouseEnter={e=>Object.assign(e.currentTarget.style, hoverStyle)} onMouseLeave={e=>Object.assign(e.currentTarget.style, {transform:'none', opacity:'1'})}>
+        Sobre
+      </Link>
+
+      <Link href="/planos" style={btnGreen} onMouseEnter={e=>Object.assign(e.currentTarget.style, hoverStyle)} onMouseLeave={e=>Object.assign(e.currentTarget.style, {transform:'none', opacity:'1'})}>
+        Planos
+      </Link>
+
+      <Link href="/simulador" style={btnGreen} onMouseEnter={e=>Object.assign(e.currentTarget.style, hoverStyle)} onMouseLeave={e=>Object.assign(e.currentTarget.style, {transform:'none', opacity:'1'})}>
+        Acessar simulador
+      </Link>
+
+      <Link href="/contato" style={baseLinkStyle} onMouseEnter={e=>Object.assign(e.currentTarget.style, hoverStyle)} onMouseLeave={e=>Object.assign(e.currentTarget.style, {transform:'none', opacity:'1'})}>
+        Fale com a gente
+      </Link>
     </nav>
   );
 }
