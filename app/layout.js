@@ -1,6 +1,6 @@
 // app/layout.js
-import "@/styles/globals.css";
-import "@/styles/overrides.css"; // <- NOVO: deixa Planos e Acessar simulador em verde
+import "../styles/globals.css";     // <- caminho relativo (funciona sem alias)
+import "../styles/overrides.css";  // <- caminho relativo (funciona sem alias)
 
 export const metadata = {
   title: "RadarCrypto.space",
