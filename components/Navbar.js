@@ -1,99 +1,149 @@
+// components/Navbar.js
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-
-const NavLink = ({ href, children }) => {
-  const pathname = usePathname();
-  const active =
-    pathname === href ||
-    (href !== "/" && pathname?.startsWith(href));
-
-  return (
-    <Link
-      href={href}
-      className={`px-3 py-2 rounded-xl text-sm font-medium transition
-        ${active ? "text-white/90 bg-white/10" : "text-white/70 hover:text-white/90 hover:bg-white/5"}`}
-    >
-      {children}
-    </Link>
-  );
-};
 
 export default function Navbar() {
-  const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  const isActive = (href) => pathname === href;
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur supports-[backdrop-filter]:bg-slate-900/60 bg-slate-900/80 border-b border-white/10">
-      <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
-        {/* Brand */}
-        <Link href="/" className="text-white font-semibold tracking-tight">
-          RadarCrypto.space
+    <header className="rcs-nav">
+      <div className="rcs-nav__inner">
+        <Link href="/" className="rcs-brand">
+          <span>RadarCrypto.space</span>
         </Link>
 
-        {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-2">
-          <NavLink href="/">Início</NavLink>
-          <NavLink href="/sobre">Sobre</NavLink>
-          <NavLink href="/simulador">Acessar simulador</NavLink>
-          <NavLink href="/contato">Fale com agente</NavLink>
+        <nav className="rcs-links">
+          <Link
+            href="/"
+            className={`rcs-link ${isActive("/") ? "is-active" : ""}`}
+          >
+            Início
+          </Link>
 
-          {/* === NOVO: Botão Planos (CTA) === */}
+          <Link
+            href="/sobre"
+            className={`rcs-link ${isActive("/sobre") ? "is-active" : ""}`}
+          >
+            Sobre
+          </Link>
+
+          {/* NOVO: botão Planos (chamativo) */}
           <Link
             href="/planos"
-            className="
-              ml-2 inline-flex items-center gap-2 rounded-xl px-4 py-2
-              text-sm font-semibold text-white
-              bg-gradient-to-r from-emerald-500 to-cyan-500
-              shadow-[0_8px_24px_rgb(16_185_129_/0.35)]
-              hover:shadow-[0_10px_28px_rgb(16_185_129_/0.45)]
-              hover:scale-[1.02] active:scale-[0.99] transition
-              focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:ring-offset-2 focus:ring-offset-slate-900
-            "
-            aria-label="Ver planos e recursos premium"
+            className="rcs-btn rcs-btn--accent"
+            aria-label="Ver planos"
           >
-            💎 Planos
+            Planos
           </Link>
-        </div>
 
-        {/* Mobile menu button */}
-        <button
-          className="md:hidden text-white/80 hover:text-white"
-          onClick={() => setOpen((v) => !v)}
-          aria-label="Abrir menu"
-        >
-          {open ? "✕" : "☰"}
-        </button>
-      </nav>
+          <Link
+            href="/simulador"
+            className="rcs-btn rcs-btn--primary"
+            aria-label="Acessar simulador"
+          >
+            Acessar simulador
+          </Link>
 
-      {/* Mobile drawer */}
-      {open && (
-        <div className="md:hidden border-t border-white/10 bg-slate-900/95">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-2 flex flex-col gap-2">
-            <NavLink href="/">Início</NavLink>
-            <NavLink href="/sobre">Sobre</NavLink>
-            <NavLink href="/simulador">Acessar simulador</NavLink>
-            <NavLink href="/contato">Fale com agente</NavLink>
-            {/* CTA nos dispositivos móveis */}
-            <Link
-              href="/planos"
-              className="
-                mt-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2
-                text-sm font-semibold text-white
-                bg-gradient-to-r from-emerald-500 to-cyan-500
-                shadow-[0_8px_24px_rgb(16_185_129_/0.35)]
-                hover:shadow-[0_10px_28px_rgb(16_185_129_/0.45)]
-                transition focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:ring-offset-2 focus:ring-offset-slate-900
-              "
-              aria-label="Ver planos e recursos premium"
-              onClick={() => setOpen(false)}
-            >
-              💎 Planos
-            </Link>
-          </div>
-        </div>
-      )}
+          <Link
+            href="/contato"
+            className={`rcs-link ${isActive("/contato") ? "is-active" : ""}`}
+          >
+            Fale com a gente
+          </Link>
+        </nav>
+      </div>
+
+      {/* Estilos isolados para não mexer em nada do restante do site */}
+      <style jsx>{`
+        .rcs-nav {
+          position: sticky;
+          top: 0;
+          z-index: 50;
+          backdrop-filter: saturate(120%) blur(6px);
+          background: rgba(10, 18, 28, 0.6);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .rcs-nav__inner {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 12px 20px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .rcs-brand {
+          font-weight: 700;
+          letter-spacing: 0.2px;
+          color: #e8f0ff;
+          text-decoration: none;
+        }
+        .rcs-links {
+          display: flex;
+          gap: 12px;
+          align-items: center;
+        }
+        .rcs-link {
+          padding: 8px 12px;
+          color: #cad6ff;
+          text-decoration: none;
+          border-radius: 10px;
+          transition: all 0.15s ease;
+        }
+        .rcs-link:hover {
+          background: rgba(255, 255, 255, 0.06);
+          color: #fff;
+        }
+        .rcs-link.is-active {
+          color: #fff;
+          background: rgba(255, 255, 255, 0.09);
+        }
+        .rcs-btn {
+          padding: 10px 14px;
+          border-radius: 12px;
+          font-weight: 600;
+          text-decoration: none;
+          line-height: 1;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+          transition: transform 0.12s ease, box-shadow 0.12s ease,
+            filter 0.12s ease;
+          border: 1px solid transparent;
+          white-space: nowrap;
+        }
+        .rcs-btn:hover {
+          transform: translateY(-1px);
+          filter: brightness(1.05);
+        }
+        /* Botão existente “Acessar simulador” (mantido) */
+        .rcs-btn--primary {
+          background: #18c964; /* verde vivo já usado no site */
+          color: #08131c;
+          border-color: rgba(0, 0, 0, 0.08);
+        }
+        /* NOVO: “Planos” atraente, com destaque diferente */
+        .rcs-btn--accent {
+          background: linear-gradient(135deg, #00e0ff, #4effa1);
+          color: #08131c;
+          border-color: rgba(0, 0, 0, 0.08);
+        }
+        @media (max-width: 820px) {
+          .rcs-links {
+            gap: 8px;
+          }
+          .rcs-btn {
+            padding: 9px 12px;
+          }
+          .rcs-link {
+            padding: 6px 8px;
+          }
+        }
+      `}</style>
     </header>
   );
 }
