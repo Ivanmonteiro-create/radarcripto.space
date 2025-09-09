@@ -26,11 +26,10 @@ export default function RootLayout({ children }) {
         {/* Conteúdo da página */}
         {children}
 
-        {/* Estilo global injetado */}
+        {/* Estilo global extra */}
         <style jsx global>{`
           header nav a,
-          .site-header nav a,
-          nav.main a {
+          .site-header nav a {
             font-size: 16.5px;
             line-height: 1;
             font-weight: 700;
@@ -46,30 +45,20 @@ export default function RootLayout({ children }) {
           }
 
           /* Links normais */
-          header nav a:not([href*="/planos"]):not([href*="/simulador"]),
-          .site-header nav a:not([href*="/planos"]):not([href*="/simulador"]),
-          nav.main a:not([href*="/planos"]):not([href*="/simulador"]) {
+          header nav a:not([href*="/planos"]):not([href*="/simulador"]) {
             color: #cfe3ff;
             background: rgba(255, 255, 255, 0.06);
             border: 1px solid rgba(255, 255, 255, 0.08);
           }
 
-          header nav a:not([href*="/planos"]):not([href*="/simulador"]):hover,
-          .site-header
-            nav
-            a:not([href*="/planos"]):not([href*="/simulador"]):hover,
-          nav.main a:not([href*="/planos"]):not([href*="/simulador"]):hover {
+          header nav a:not([href*="/planos"]):not([href*="/simulador"]):hover {
             transform: translateY(-1px);
             box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
           }
 
           /* Destaques verdes: Planos + Acessar simulador */
           header nav a[href*="/planos"],
-          .site-header nav a[href*="/planos"],
-          nav.main a[href*="/planos"],
-          header nav a[href*="/simulador"],
-          .site-header nav a[href*="/simulador"],
-          nav.main a[href*="/simulador"] {
+          header nav a[href*="/simulador"] {
             font-size: 18px !important;
             padding: 12px 18px !important;
             color: #041e11 !important;
@@ -81,11 +70,7 @@ export default function RootLayout({ children }) {
           }
 
           header nav a[href*="/planos"]:hover,
-          .site-header nav a[href*="/planos"]:hover,
-          nav.main a[href*="/planos"]:hover,
-          header nav a[href*="/simulador"]:hover,
-          .site-header nav a[href*="/simulador"]:hover,
-          nav.main a[href*="/simulador"]:hover {
+          header nav a[href*="/simulador"]:hover {
             background: #19cc55 !important;
             border-color: #10a945 !important;
             transform: translateY(-1.5px);
