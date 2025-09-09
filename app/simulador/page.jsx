@@ -19,6 +19,7 @@ const money = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 
 export default function SimuladorPage() {
+  /* ===== Estado principal ===== */
   const [symbol, setSymbol] = useState(SYMBOLS[0]);
   const [statusMsg, setStatusMsg] = useState("Carregando gráfico...");
   const [useIframe, setUseIframe] = useState(false);
@@ -60,6 +61,7 @@ export default function SimuladorPage() {
       document.removeEventListener("fullscreenchange", onChange);
       window.removeEventListener("keydown", onKey);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* ===== TradingView ===== */
@@ -83,7 +85,7 @@ export default function SimuladorPage() {
           style: "1",
           locale: "br",
           hide_side_toolbar: false,
-          hide_top_toolbar: false, // ← garante toolbar visível
+          hide_top_toolbar: false, // toolbar SEMPRE visível
           allow_symbol_change: false,
           withdateranges: true,
           studies: [],
@@ -146,15 +148,24 @@ export default function SimuladorPage() {
     try {
       ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.stream}@miniTicker`);
       ws.onmessage = (ev) => {
-        try { const d = JSON.parse(ev.data); if (d?.c) setPrice(parseFloat(d.c)); } catch {}
+        try {
+          const d = JSON.parse(ev.data);
+          if (d?.c) setPrice(parseFloat(d.c));
+        } catch {}
       };
     } catch {}
     return () => { try { ws && ws.close(); } catch {} };
   }, [symbol]);
 
-  /* ===== Trader ===== */
-  const buy = () => {
-    if (price <= 0 || orderUSDT <= 0 || orderUSDT > cash) return;
+  /* ===== Ações ===== */
+  const positionValue = posQty * price;
+  const unrealizedPL = posQty > 0 ? (price - avgPrice) * posQty : 0;
+  const totalEquity = cash + positionValue;
+
+  const tryBuy = () => {
+    if (price <= 0) return alert("Aguarde o preço carregar.");
+    if (orderUSDT <= 0) return alert("Informe um tamanho de ordem válido.");
+    if (orderUSDT > cash) return alert("Saldo insuficiente.");
     const qty = orderUSDT / price;
     const newQty = posQty + qty;
     const newAvg = posQty > 0 ? (avgPrice * posQty + price * qty) / newQty : price;
@@ -163,8 +174,10 @@ export default function SimuladorPage() {
     setCash((c) => c - orderUSDT);
     setHistory((h) => [{ time: new Date().toLocaleTimeString(), side: "Compra", qty, price, value: orderUSDT }, ...h]);
   };
-  const sell = () => {
-    if (price <= 0 || orderUSDT <= 0 || posQty <= 0) return;
+  const trySell = () => {
+    if (price <= 0) return alert("Aguarde o preço carregar.");
+    if (orderUSDT <= 0) return alert("Informe um tamanho de ordem válido.");
+    if (posQty <= 0) return alert("Você não tem posição para vender.");
     const qty = Math.min(posQty, orderUSDT / price);
     const value = qty * price;
     setPosQty((q) => q - qty);
@@ -174,9 +187,16 @@ export default function SimuladorPage() {
   };
   const resetAll = () => { setCash(10000); setOrderUSDT(100); setPosQty(0); setAvgPrice(0); setHistory([]); };
 
-  const positionValue = posQty * price;
-  const unrealizedPL = posQty > 0 ? (price - avgPrice) * posQty : 0;
-  const totalEquity = cash + positionValue;
+  /* ===== Atalhos “que ficavam atrás” ===== */
+  const openIndicators = () => {
+    try { widgetRef.current?.chart?.executeActionById?.("insertIndicator"); } catch {}
+  };
+  const setIntervalTV = (i) => {
+    try { widgetRef.current?.chart?.setResolution?.(i); } catch {}
+  };
+  const openCompare = () => {
+    try { widgetRef.current?.chart?.executeActionById?.("insertCompare"); } catch {}
+  };
 
   /* ===== IFRAME fallback ===== */
   const iframeURL = useMemo(() => {
@@ -198,7 +218,7 @@ export default function SimuladorPage() {
         <div style={grid}>
           {/* ===== GRÁFICO ===== */}
           <section ref={shellRef} style={chartShell}>
-            {/* Barra fina: seletor de ativo; NÃO cobre toolbar do TV */}
+            {/* Barra super fina (apenas seletor de ativo) */}
             <div style={thinBar}>
               <span style={{ fontSize: 12, opacity: 0.7, marginRight: 8 }}>Ativo</span>
               <select
@@ -214,8 +234,15 @@ export default function SimuladorPage() {
               </select>
             </div>
 
-            {/* Dock compacto (top-right), ao lado da toolbar do TV (sem cobrir) */}
+            {/* Dock de controles visíveis (o que ficava “atrás”) */}
             <div style={controlDock}>
+              <button onClick={openIndicators} style={chip} className="no-outline">Indicadores</button>
+              <div style={chipGroup}>
+                <button onClick={() => setIntervalTV("1")} style={chipSoft} className="no-outline">1m</button>
+                <button onClick={() => setIntervalTV("5")} style={chipSoft} className="no-outline">5m</button>
+                <button onClick={() => setIntervalTV("60")} style={chipSoft} className="no-outline">1h</button>
+              </div>
+              <button onClick={openCompare} style={chip} className="no-outline">Comparar</button>
               <button onClick={toggleFull} style={chipPrimary} className="no-outline">
                 {isFull ? "Sair Tela Cheia (X/Esc)" : "Tela Cheia (F)"}
               </button>
@@ -257,8 +284,9 @@ export default function SimuladorPage() {
               />
               <div style={tiny}>≈ {(price > 0 ? orderUSDT / price : 0).toFixed(6)} {symbol.label.split(" ")[0]}</div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={buy} disabled={price <= 0 || orderUSDT <= 0 || orderUSDT > cash} style={btnBuy(price <= 0 || orderUSDT > cash)} className="no-outline">Comprar</button>
-                <button onClick={sell} disabled={price <= 0 || posQty <= 0} style={btnSell(price <= 0 || posQty <= 0)} className="no-outline">Vender</button>
+                {/* SEM disabled nativo: cursor sempre pointer; validação no clique */}
+                <button onClick={tryBuy} style={btnBuy} className="no-outline">Comprar</button>
+                <button onClick={trySell} style={btnSell} className="no-outline">Vender</button>
               </div>
               <button onClick={resetAll} style={btnReset} className="no-outline">Resetar</button>
             </Card>
@@ -295,6 +323,7 @@ export default function SimuladorPage() {
 
       {/* remove “bolinha branca” e toques azuis */}
       <style jsx global>{`
+        html, body { height: 100%; }
         * { -webkit-tap-highlight-color: transparent; }
         .no-outline { outline: none !important; box-shadow: none !important; }
         button.no-outline:focus, select.no-outline:focus, input.no-outline:focus { outline: none !important; box-shadow: none !important; }
@@ -328,14 +357,14 @@ const pageBg = {
     "radial-gradient(1200px 600px at 50% -10%, rgba(66,153,255,0.12), transparent 60%), #0a1020",
   color: "rgba(255,255,255,0.92)",
 };
-const wrap = { maxWidth: 1400, margin: "0 auto", padding: 12 };
+/* zera respiro lateral para não sobrar faixa preta */
+const wrap = { maxWidth: "100%", margin: 0, padding: 8 };
 
-/* grid fix: garante que o gráfico não “invade” a coluna direita */
 const grid = {
   display: "grid",
   gridTemplateColumns: "1fr 340px",
-  gap: 12,
-  height: "calc(100vh - 24px)",
+  gap: 8,
+  height: "calc(100vh - 16px)", // ocupa a viewport inteira
   position: "relative",
 };
 
@@ -349,32 +378,30 @@ const chartShell = {
   zIndex: 1, // abaixo da coluna direita
 };
 
-/* barra fina superior (apenas seletor) */
 const thinBar = {
   position: "absolute",
-  left: 8,
-  top: 6,
+  left: 10,
+  top: 8,
   zIndex: 3,
   display: "flex",
   alignItems: "center",
+  gap: 8,
 };
 
 const controlDock = {
   position: "absolute",
-  right: 8,
-  top: 6,
-  zIndex: 3, // acima do gráfico, mas não cobre a toolbar do TV
+  right: 10,
+  top: 8,
+  zIndex: 3,
   display: "flex",
   gap: 8,
   alignItems: "center",
+  flexWrap: "wrap",
 };
 
 const chartArea = {
   position: "absolute",
-  left: 0,
-  right: 0,
-  bottom: 0,
-  top: 0, // começa no topo do container; a toolbar do TV fica dentro e visível
+  inset: 0, // ocupa 100% (sem folgas)
 };
 
 const chartStatus = {
@@ -385,10 +412,10 @@ const chartStatus = {
 const rightCol = {
   display: "flex",
   flexDirection: "column",
-  gap: 12,
+  gap: 8,
   height: "100%",
   position: "relative",
-  zIndex: 5, // garante clique nos botões do painel
+  zIndex: 5, // acima do gráfico para receber cliques
 };
 
 const card = {
@@ -420,7 +447,7 @@ const inputStyle = {
   color: "white",
 };
 
-const btnBuy = (disabled) => ({
+const btnBuy = {
   flex: 1,
   background: "#17c964",
   color: "#042312",
@@ -428,10 +455,9 @@ const btnBuy = (disabled) => ({
   borderRadius: 10,
   padding: "10px 12px",
   fontWeight: 700,
-  cursor: disabled ? "not-allowed" : "pointer",
-  opacity: disabled ? 0.6 : 1,
-});
-const btnSell = (disabled) => ({
+  cursor: "pointer",
+};
+const btnSell = {
   flex: 1,
   background: "#f31260",
   color: "white",
@@ -439,9 +465,8 @@ const btnSell = (disabled) => ({
   borderRadius: 10,
   padding: "10px 12px",
   fontWeight: 700,
-  cursor: disabled ? "not-allowed" : "pointer",
-  opacity: disabled ? 0.6 : 1,
-});
+  cursor: "pointer",
+};
 const btnReset = {
   marginTop: 8,
   width: "100%",
@@ -453,12 +478,26 @@ const btnReset = {
   cursor: "pointer",
 };
 
+const chip = {
+  background: "rgba(255,255,255,0.08)",
+  color: "white",
+  border: "1px solid rgba(255,255,255,0.15)",
+  borderRadius: 10,
+  padding: "6px 10px",
+  fontSize: 12,
+  cursor: "pointer",
+};
+const chipSoft = {
+  ...chip,
+  background: "rgba(255,255,255,0.06)",
+};
+const chipGroup = { display: "flex", gap: 6 };
 const chipPrimary = {
   background: "#0e6bff",
   color: "white",
   border: "1px solid rgba(255,255,255,0.15)",
   borderRadius: 10,
-  padding: "8px 10px",
+  padding: "6px 10px",
   fontSize: 12,
   cursor: "pointer",
 };
@@ -467,7 +506,7 @@ const chipSuccess = {
   color: "#04170c",
   border: "1px solid rgba(255,255,255,0.15)",
   borderRadius: 10,
-  padding: "8px 10px",
+  padding: "6px 10px",
   fontSize: 12,
   fontWeight: 700,
   cursor: "pointer",
