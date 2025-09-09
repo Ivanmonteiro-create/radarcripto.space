@@ -1,8 +1,9 @@
-/* ---- Boost visual dos links do menu (Home) ---- */
+/* ---- Boost dos links do menu (Home) ---- */
 
-/* Base dos links do menu (todos) */
+/* Tornar a regra mais específica para vencer estilos existentes */
 header nav a,
-nav a {
+.site-header nav a,
+nav.main a {
   font-size: 16.5px;
   line-height: 1;
   font-weight: 700;
@@ -16,42 +17,49 @@ nav a {
   gap: 6px;
 }
 
-/* Estados padrão (links comuns) */
-header nav a:not([href="/planos"]):not([href="/simulador"]),
-nav a:not([href="/planos"]):not([href="/simulador"]) {
+/* Links comuns – mantém como está (leve/azulado) */
+header nav a:not([href*="/planos"]):not([href*="/simulador"]),
+.site-header nav a:not([href*="/planos"]):not([href*="/simulador"]),
+nav.main a:not([href*="/planos"]):not([href*="/simulador"]) {
   color: #cfe3ff;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.08);
 }
-header nav a:not([href="/planos"]):not([href="/simulador"]):hover,
-nav a:not([href="/planos"]):not([href="/simulador"]):hover {
+header nav a:not([href*="/planos"]):not([href*="/simulador"]):hover,
+.site-header nav a:not([href*="/planos"]):not([href*="/simulador"]):hover,
+nav.main a:not([href*="/planos"]):not([href*="/simulador"]):hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 14px rgba(0,0,0,.25);
 }
 
-/* --- Destaque: Planos e Acessar simulador --- */
-header nav a[href="/planos"],
-nav a[href="/planos"],
-header nav a[href="/simulador"],
-nav a[href="/simulador"] {
-  font-size: 18px;                /* ligeiramente maior */
-  padding: 12px 18px;             /* mais espaço interno */
-  color: #041e11;                 /* texto escuro */
-  background: #1fe15f;            /* verde vivo */
-  border: 1px solid #11b84a;
-  border-radius: 14px;
+/* === Destaque VERDE: Planos e Acessar simulador === */
+/* Usamos [href*="/rota"] para funcionar mesmo com basePath, query etc. */
+header nav a[href*="/planos"],
+.site-header nav a[href*="/planos"],
+nav.main a[href*="/planos"],
+header nav a[href*="/simulador"],
+.site-header nav a[href*="/simulador"],
+nav.main a[href*="/simulador"] {
+  font-size: 18px !important;          /* ligeiramente maior */
+  padding: 12px 18px !important;        /* mais espaço */
+  color: #041e11 !important;            /* texto escuro */
+  background: #1fe15f !important;       /* verde vivo */
+  border: 1px solid #11b84a !important;
+  border-radius: 14px !important;
   box-shadow:
     inset 0 0 0 1px rgba(255,255,255,.25),
-    0 8px 22px rgba(31,225,95,.28);
+    0 8px 22px rgba(31,225,95,.28) !important;
 }
-header nav a[href="/planos"]:hover,
-nav a[href="/planos"]:hover,
-header nav a[href="/simulador"]:hover,
-nav a[href="/simulador"]:hover {
-  background: #19cc55;
-  border-color: #10a945;
+header nav a[href*="/planos"]:hover,
+.site-header nav a[href*="/planos"]:hover,
+nav.main a[href*="/planos"]:hover,
+header nav a[href*="/simulador"]:hover,
+.site-header nav a[href*="/simulador"]:hover,
+nav.main a[href*="/simulador"]:hover {
+  background: #19cc55 !important;
+  border-color: #10a945 !important;
   transform: translateY(-1.5px);
   box-shadow:
     inset 0 0 0 1px rgba(255,255,255,.3),
-    0 12px 26px rgba(31,225,95,.35);
+    0 12px 26px rgba(31,225,95,.35) !important;
 }
