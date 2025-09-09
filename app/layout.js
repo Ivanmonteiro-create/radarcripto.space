@@ -27,7 +27,6 @@ export default function RootLayout({ children }) {
         {children}
 
         {/* Estilo global extra */}
-        <style jsx global>{`
           header nav a,
           .site-header nav a {
             font-size: 16.5px;
