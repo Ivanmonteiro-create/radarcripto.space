@@ -1,0 +1,71 @@
+/* ---- Boost visual dos links do menu (Home) ---- */
+
+/* Base dos links do menu (direita) */
+header nav a,
+nav a {
+  font-size: 16.5px;        /* maior e mais legível */
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: .2px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Estados padrão (para não-destaque) */
+header nav a:not([href="/planos"]):not([href="/simulador"]),
+nav a:not([href="/planos"]):not([href="/simulador"]) {
+  color: #cfe3ff;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+header nav a:not([href="/planos"]):not([href="/simulador"]):hover,
+nav a:not([href="/planos"]):not([href="/simulador"]):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0,0,0,.25);
+}
+
+/* DESTAQUES verdes */
+header nav a[href="/planos"],
+nav a[href="/planos"],
+header nav a[href="/simulador"],
+nav a[href="/simulador"] {
+  color: #041e11;               /* verde com texto escuro para contraste */
+  background: #1fe15f;          /* verde vivo */
+  border: 1px solid #11b84a;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.25),
+    0 8px 20px rgba(31,225,95,.28);
+}
+header nav a[href="/planos"]:hover,
+nav a[href="/planos"]:hover,
+header nav a[href="/simulador"]:hover,
+nav a[href="/simulador"]:hover {
+  background: #19cc55;
+  border-color: #10a945;
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.3),
+    0 10px 24px rgba(31,225,95,.35);
+}
+
+/* Estado “ativo” opcional (quando a rota já estiver nela) */
+header nav a[aria-current="page"],
+nav a[aria-current="page"] {
+  outline: 2px solid rgba(31,225,95,.5);
+  outline-offset: 2px;
+}
+
+/* Responsivo: em telas mais estreitas, um pouco menor para caber */
+@media (max-width: 900px) {
+  header nav a,
+  nav a { font-size: 15.5px; padding: 9px 12px; }
+}
+@media (max-width: 640px) {
+  header nav a,
+  nav a { font-size: 15px; padding: 8px 10px; }
+}
