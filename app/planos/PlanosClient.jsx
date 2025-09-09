@@ -69,28 +69,11 @@ export default function PlanosClient() {
           display: flex; flex-direction: column; gap: 10px;
         }
         .card--pro { outline: 2px solid rgba(24,201,100,0.45); background: rgba(10,24,18,0.75); }
-        .badge { align-self: flex-start; font-size: 12px; padding: 6px 10px; border-radius: 999px; background: #18c964; color: #07131b; font-weight: 800; margin-bottom: 4px; }
+        .badge { align-self: flex-start; font-size: 12px; padding: 6px 10px; border-radius: 999px; margin-bottom: 4px; }
         h2 { color: #eaf2ff; margin: 0; }
         .price { color: #9ed7b7; font-weight: 800; margin: 0 0 8px; }
         .feat { color: #c9d7ff; margin: 0 0 12px; padding-left: 18px; }
         .feat li + li { margin-top: 6px; }
-
-        /* pílula verde padrão — igual ao menu */
-        .pill-primary {
-          align-self: flex-start;
-          background: #18c964;
-          color: #07131b;
-          text-decoration: none;
-          padding: 10px 14px;
-          border-radius: 999px;
-          font-weight: 800;
-          border: 1px solid rgba(0,0,0,0.12);
-          box-shadow: 0 10px 24px rgba(24,201,100,0.28);
-          transition: transform .12s ease, filter .12s ease;
-          white-space: nowrap;
-        }
-        .pill-primary:hover { transform: translateY(-1px); filter: brightness(1.08); }
-
         @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
       `}</style>
     </main>
