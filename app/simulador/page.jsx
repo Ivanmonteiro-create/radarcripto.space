@@ -3,9 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
-/* =========================
-   CONFIG
-   ========================= */
 const SYMBOLS = [
   { tv: "BINANCE:BTCUSDT", stream: "btcusdt", label: "Bitcoin (BTC)" },
   { tv: "BINANCE:ETHUSDT", stream: "ethusdt", label: "Ethereum (ETH)" },
@@ -24,28 +21,26 @@ const INDICATOR_NAMES = {
   ema: "Moving Average Exponential",
 };
 
-const CURRENCY = (n) =>
+const money = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 
-/* =========================
-   PAGE
-   ========================= */
 export default function SimuladorPage() {
   const [symbol, setSymbol] = useState(SYMBOLS[0]);
   const [statusMsg, setStatusMsg] = useState("Carregando gráfico...");
   const [chartReady, setChartReady] = useState(false);
+  const [useIframe, setUseIframe] = useState(false); // Fallback definitivo
 
   // preço em tempo real
   const [price, setPrice] = useState(0);
 
   // conta demo / posição
-  const [cash, setCash] = useState(10000); // USDT
+  const [cash, setCash] = useState(10000);
   const [orderUSDT, setOrderUSDT] = useState(100);
-  const [posQty, setPosQty] = useState(0); // quantidade em cripto
-  const [avgPrice, setAvgPrice] = useState(0); // preço médio
-  const [history, setHistory] = useState([]); // {time, side, qty, price, value}
+  const [posQty, setPosQty] = useState(0);
+  const [avgPrice, setAvgPrice] = useState(0);
+  const [history, setHistory] = useState([]);
 
-  // refs TV
+  // TradingView
   const containerId = useMemo(
     () => `tv_${Math.random().toString(36).slice(2)}`,
     []
@@ -53,119 +48,124 @@ export default function SimuladorPage() {
   const widgetRef = useRef(null);
   const studiesRef = useRef({});
 
-  /* -------------------------
-     TradingView loader
-     ------------------------- */
+  // carrega TradingView; se falhar, ativa IFRAME
   useEffect(() => {
     let cancelled = false;
 
-    const init = () => {
-      if (cancelled) return;
-
-      // Remove anterior
-      if (widgetRef.current?.remove) {
-        try { widgetRef.current.remove(); } catch {}
-      }
-
-      const create = () => {
-        try {
-          const w = new window.TradingView.widget({
-            container_id: containerId,
-            symbol: symbol.tv,
-            interval: "5",
-            autosize: true,
-            theme: "dark",
-            timezone: "Etc/UTC",
-            style: "1",
-            locale: "br",
-            hide_side_toolbar: false,
-            hide_top_toolbar: false,
-            allow_symbol_change: false,
-            studies: [],
-            withdateranges: true,
-            disabled_features: ["header_saveload"],
-          });
-          widgetRef.current = w;
-          setStatusMsg("");
-          w.onChartReady(() => {
-            if (cancelled) return;
-            setChartReady(true);
-          });
-        } catch (e) {
-          console.error(e);
-          setStatusMsg("Não foi possível iniciar o gráfico.");
-        }
-      };
-
-      if (window.TradingView?.widget) {
-        create();
-      } else {
-        if (!window.__tvScriptLoading) {
-          window.__tvScriptLoading = new Promise((resolve, reject) => {
-            const s = document.createElement("script");
-            s.src = "https://s3.tradingview.com/tv.js";
-            s.async = true;
-            s.onload = resolve;
-            s.onerror = reject;
-            document.head.appendChild(s);
-          });
-        }
-        window.__tvScriptLoading
-          .then(() => create())
-          .catch(() => setStatusMsg("Falha ao carregar TradingView."));
-      }
-    };
-
-    init();
-
-    return () => {
-      cancelled = true;
+    const cleanup = () => {
       setChartReady(false);
       if (widgetRef.current?.remove) {
         try { widgetRef.current.remove(); } catch {}
       }
+      widgetRef.current = null;
+      studiesRef.current = {};
     };
-  }, [symbol, containerId]);
 
-  /* -------------------------
-     Binance miniTicker WebSocket
-     ------------------------- */
-  useEffect(() => {
-    let ws;
-    const url = `wss://stream.binance.com:9443/ws/${symbol.stream}@miniTicker`;
+    const tryCreateWidget = () => {
+      try {
+        const w = new window.TradingView.widget({
+          container_id: containerId,
+          symbol: symbol.tv,
+          interval: "5",
+          autosize: true,
+          theme: "dark",
+          timezone: "Etc/UTC",
+          style: "1",
+          locale: "br",
+          hide_side_toolbar: false,
+          hide_top_toolbar: false,
+          allow_symbol_change: false,
+          withdateranges: true,
+          studies: [],
+          disabled_features: ["header_saveload"],
+        });
+        widgetRef.current = w;
+        setStatusMsg("");
+        w.onChartReady(() => {
+          if (cancelled) return;
+          setChartReady(true);
+        });
+      } catch (e) {
+        console.error("TV widget error:", e);
+        setStatusMsg("Não foi possível iniciar o gráfico.");
+        setUseIframe(true); // ativa fallback
+      }
+    };
 
-    try {
-      ws = new WebSocket(url);
-      ws.onmessage = (ev) => {
-        try {
-          const data = JSON.parse(ev.data);
-          if (data?.c) setPrice(parseFloat(data.c));
-        } catch {}
-      };
-      ws.onerror = () => {
-        // queda de WS não deve quebrar a página
-        console.warn("WS Binance erro");
-      };
-    } catch (e) {
-      console.warn("WS Binance não pôde iniciar", e);
-    }
+    const start = () => {
+      if (cancelled) return;
+      // se já estamos em IFRAME, não tenta script
+      if (useIframe) return;
+
+      // se lib já está no window
+      if (window.TradingView?.widget) {
+        tryCreateWidget();
+        return;
+      }
+      // carrega script uma vez globalmente
+      if (!window.__tvScriptLoading) {
+        window.__tvScriptLoading = new Promise((resolve, reject) => {
+          const s = document.createElement("script");
+          s.src = "https://s3.tradingview.com/tv.js";
+          s.async = true;
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      }
+      window.__tvScriptLoading
+        .then(() => tryCreateWidget())
+        .catch((err) => {
+          console.warn("Falha ao carregar tv.js", err);
+          setStatusMsg("Não foi possível iniciar o gráfico.");
+          setUseIframe(true);
+        });
+
+      // segunda tentativa em 1,2s (caso onload não dispare)
+      setTimeout(() => {
+        if (!window.TradingView?.widget && !useIframe && !cancelled) {
+          console.warn("tv.js não disponível, ativando fallback IFRAME.");
+          setUseIframe(true);
+          setStatusMsg("");
+        }
+      }, 1200);
+    };
+
+    cleanup();
+    setUseIframe(false);
+    setStatusMsg("Carregando gráfico...");
+    start();
 
     return () => {
-      try { ws && ws.close(); } catch {}
+      cancelled = true;
+      cleanup();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol, containerId]);
+
+  // WebSocket Binance — preço em tempo real
+  useEffect(() => {
+    let ws;
+    try {
+      ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.stream}@miniTicker`);
+      ws.onmessage = (ev) => {
+        try {
+          const d = JSON.parse(ev.data);
+          if (d?.c) setPrice(parseFloat(d.c));
+        } catch {}
+      };
+    } catch {}
+    return () => { try { ws && ws.close(); } catch {} };
   }, [symbol]);
 
-  /* -------------------------
-     Indicadores (toggle)
-     ------------------------- */
+  // Indicadores (TV Widget apenas)
   const toggleIndicator = async (key) => {
+    if (useIframe) return; // indicadores só no widget
     const w = widgetRef.current;
     if (!w || !chartReady) return;
-
     try {
       const chart = w.activeChart();
       if (!chart) return;
-
       if (studiesRef.current[key]) {
         chart.removeEntity(studiesRef.current[key]);
         studiesRef.current[key] = null;
@@ -178,19 +178,14 @@ export default function SimuladorPage() {
     }
   };
 
-  /* -------------------------
-     Ações: comprar / vender
-     ------------------------- */
+  // Trader — buy/sell/reset
   const qtyFromUSDT = price > 0 ? orderUSDT / price : 0;
 
   const buy = () => {
     if (price <= 0 || orderUSDT <= 0 || orderUSDT > cash) return;
-
     const qty = orderUSDT / price;
     const newQty = posQty + qty;
-    const newAvg =
-      posQty > 0 ? (avgPrice * posQty + price * qty) / newQty : price;
-
+    const newAvg = posQty > 0 ? (avgPrice * posQty + price * qty) / newQty : price;
     setPosQty(newQty);
     setAvgPrice(newAvg);
     setCash((c) => c - orderUSDT);
@@ -202,19 +197,14 @@ export default function SimuladorPage() {
 
   const sell = () => {
     if (price <= 0 || orderUSDT <= 0 || posQty <= 0) return;
-
     const qty = Math.min(posQty, orderUSDT / price);
     const value = qty * price;
-    const realized = (price - avgPrice) * qty;
-
     setPosQty((q) => q - qty);
     setCash((c) => c + value);
     setHistory((h) => [
       { time: new Date().toLocaleTimeString(), side: "Venda", qty, price, value },
       ...h,
     ]);
-
-    // se zerou posição, zera preço médio
     setAvgPrice((prev) => {
       const q = posQty - qty;
       return q > 0 ? prev : 0;
@@ -229,16 +219,29 @@ export default function SimuladorPage() {
     setHistory([]);
   };
 
-  /* -------------------------
-     Derivados
-     ------------------------- */
   const positionValue = posQty * price;
   const unrealizedPL = posQty > 0 ? (price - avgPrice) * posQty : 0;
   const totalEquity = cash + positionValue;
 
-  /* -------------------------
-     UI
-     ------------------------- */
+  // URL do fallback IFRAME
+  const iframeURL = useMemo(() => {
+    const u = new URL("https://s.tradingview.com/widgetembed/");
+    u.searchParams.set("symbol", symbol.tv);
+    u.searchParams.set("interval", "5");
+    u.searchParams.set("theme", "dark");
+    u.searchParams.set("hide_top_toolbar", "0");
+    u.searchParams.set("hide_side_toolbar", "0");
+    u.searchParams.set("allow_symbol_change", "0");
+    u.searchParams.set("withdateranges", "1");
+    u.searchParams.set("locale", "br");
+    // estudos default só no iframe (opcional)
+    u.searchParams.set(
+      "studies",
+      encodeURIComponent("RSI@tv-basicstudies,MACD@tv-basicstudies,BB@tv-basicstudies,EMA@tv-basicstudies")
+    );
+    return u.toString();
+  }, [symbol]);
+
   return (
     <main
       style={{
@@ -250,7 +253,7 @@ export default function SimuladorPage() {
       }}
     >
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-        {/* Barra do topo */}
+        {/* Top bar */}
         <div
           style={{
             display: "flex",
@@ -290,6 +293,8 @@ export default function SimuladorPage() {
                 <button
                   key={k}
                   onClick={() => toggleIndicator(k)}
+                  disabled={useIframe}
+                  title={useIframe ? "Indicadores editáveis só no gráfico embutido (não-IFRAME)" : ""}
                   style={{
                     background: "#13203d",
                     color: "white",
@@ -297,6 +302,8 @@ export default function SimuladorPage() {
                     borderRadius: 10,
                     padding: "8px 10px",
                     fontSize: 13,
+                    opacity: useIframe ? 0.6 : 1,
+                    cursor: useIframe ? "not-allowed" : "pointer",
                   }}
                 >
                   {INDICATOR_NAMES[k]}
@@ -305,21 +312,19 @@ export default function SimuladorPage() {
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <Link
-              href="/"
-              style={{
-                background: "#14b45c",
-                color: "#05130b",
-                border: "none",
-                borderRadius: 12,
-                padding: "10px 14px",
-                fontWeight: 700,
-              }}
-            >
-              Voltar ao Início
-            </Link>
-          </div>
+          <Link
+            href="/"
+            style={{
+              background: "#14b45c",
+              color: "#05130b",
+              border: "none",
+              borderRadius: 12,
+              padding: "10px 14px",
+              fontWeight: 700,
+            }}
+          >
+            Voltar ao Início
+          </Link>
         </div>
 
         {/* Gráfico */}
@@ -334,20 +339,32 @@ export default function SimuladorPage() {
             border: "1px solid rgba(255,255,255,0.06)",
           }}
         >
-          <div id={containerId} style={{ width: "100%", height: "100%" }} />
-          {!!statusMsg && (
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                display: "grid",
-                placeItems: "center",
-                color: "rgba(255,255,255,0.7)",
-                fontSize: 14,
-              }}
-            >
-              {statusMsg}
-            </div>
+          {useIframe ? (
+            <iframe
+              title={`Chart ${symbol.tv}`}
+              src={iframeURL}
+              style={{ border: 0, width: "100%", height: "100%" }}
+              loading="lazy"
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+          ) : (
+            <>
+              <div id={containerId} style={{ width: "100%", height: "100%" }} />
+              {!!statusMsg && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "grid",
+                    placeItems: "center",
+                    color: "rgba(255,255,255,0.7)",
+                    fontSize: 14,
+                  }}
+                >
+                  {statusMsg}
+                </div>
+              )}
+            </>
           )}
         </section>
 
@@ -360,18 +377,10 @@ export default function SimuladorPage() {
             gap: 12,
           }}
         >
-          {/* Coluna A: Ações */}
-          <div
-            style={{
-              background: "linear-gradient(180deg,#0c1424 0%, #0b1120 100%)",
-              border: "1px solid rgba(255,255,255,0.06)",
-              borderRadius: 14,
-              padding: 14,
-            }}
-          >
-            <h4 style={{ margin: "0 0 10px 0" }}>Ações</h4>
+          {/* Ações */}
+          <Card title="Ações">
             <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 6 }}>
-              Preço atual: <b>{price > 0 ? CURRENCY(price) : "—"}</b>
+              Preço atual: <b>{price > 0 ? money(price) : "—"}</b>
             </div>
 
             <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>
@@ -383,131 +392,57 @@ export default function SimuladorPage() {
               step={1}
               value={orderUSDT}
               onChange={(e) => setOrderUSDT(Math.max(1, Number(e.target.value || 1)))}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.2)",
-                background: "#0f1830",
-                color: "white",
-                marginBottom: 10,
-              }}
+              style={inputStyle}
             />
 
             <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 10 }}>
-              ≈ {qtyFromUSDT.toFixed(6)} {symbol.label.split(" ")[0]}
+              ≈ {(price > 0 ? orderUSDT / price : 0).toFixed(6)} {symbol.label.split(" ")[0]}
             </div>
 
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 onClick={buy}
                 disabled={price <= 0 || orderUSDT <= 0 || orderUSDT > cash}
-                style={{
-                  flex: 1,
-                  background: "#17c964",
-                  color: "#042312",
-                  border: "none",
-                  borderRadius: 12,
-                  padding: "12px 14px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  opacity: price <= 0 || orderUSDT > cash ? 0.6 : 1,
-                }}
+                style={btnBuy(price <= 0 || orderUSDT > cash)}
               >
                 Comprar
               </button>
               <button
                 onClick={sell}
                 disabled={price <= 0 || posQty <= 0}
-                style={{
-                  flex: 1,
-                  background: "#f31260",
-                  color: "white",
-                  border: "none",
-                  borderRadius: 12,
-                  padding: "12px 14px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  opacity: price <= 0 || posQty <= 0 ? 0.6 : 1,
-                }}
+                style={btnSell(price <= 0 || posQty <= 0)}
               >
                 Vender
               </button>
             </div>
 
-            <button
-              onClick={resetAll}
-              style={{
-                marginTop: 10,
-                width: "100%",
-                background: "#1f2937",
-                color: "white",
-                border: "1px solid rgba(255,255,255,0.15)",
-                borderRadius: 10,
-                padding: "10px 12px",
-                cursor: "pointer",
-              }}
-            >
+            <button onClick={resetAll} style={btnReset}>
               Resetar
             </button>
-          </div>
+          </Card>
 
-          {/* Coluna B: Conta / Posição */}
-          <div
-            style={{
-              background: "linear-gradient(180deg,#0c1424 0%, #0b1120 100%)",
-              border: "1px solid rgba(255,255,255,0.06)",
-              borderRadius: 14,
-              padding: 14,
-            }}
-          >
-            <h4 style={{ margin: "0 0 10px 0" }}>Sua conta (demo)</h4>
-            <div style={{ display: "grid", gap: 8, fontSize: 14 }}>
-              <Row label="Saldo" value={CURRENCY(cash)} />
-              <Row label="Quantidade" value={posQty.toFixed(6)} />
-              <Row label="Valor da posição" value={CURRENCY(positionValue)} />
-              <Row
-                label="P&L (não realizado)"
-                value={CURRENCY(unrealizedPL)}
-                valueColor={unrealizedPL >= 0 ? "#17c964" : "#f31260"}
-              />
-              <div
-                style={{
-                  height: 8,
-                  background: "rgba(255,255,255,0.08)",
-                  borderRadius: 999,
-                  overflow: "hidden",
-                  marginTop: 4,
-                }}
-              >
-                <div
-                  style={{
-                    width: `${Math.max(
-                      5,
-                      Math.min(95, (Math.abs(unrealizedPL) / (cash + 1)) * 100)
-                    )}%`,
-                    height: "100%",
-                    background: unrealizedPL >= 0 ? "#17c964" : "#f31260",
-                  }}
-                />
-              </div>
-              <Row label="Equity total" value={CURRENCY(totalEquity)} />
-            </div>
-          </div>
+          {/* Conta/Posição */}
+          <Card title="Sua conta (demo)">
+            <Row label="Saldo" value={money(cash)} />
+            <Row label="Quantidade" value={posQty.toFixed(6)} />
+            <Row label="Valor da posição" value={money(posQty * price)} />
+            <Row
+              label="P&L (não realizado)"
+              value={money(posQty > 0 ? (price - avgPrice) * posQty : 0)}
+              valueColor={posQty > 0 && price - avgPrice >= 0 ? "#17c964" : "#f31260"}
+            />
+            <Progress
+              valuePct={Math.max(
+                5,
+                Math.min(95, (Math.abs(posQty > 0 ? (price - avgPrice) * posQty : 0) / (cash + 1)) * 100)
+              )}
+              color={posQty > 0 && price - avgPrice >= 0 ? "#17c964" : "#f31260"}
+            />
+            <Row label="Equity total" value={money(cash + posQty * price)} />
+          </Card>
 
-          {/* Coluna C: Histórico */}
-          <div
-            style={{
-              background: "linear-gradient(180deg,#0c1424 0%, #0b1120 100%)",
-              border: "1px solid rgba(255,255,255,0.06)",
-              borderRadius: 14,
-              padding: 14,
-              minHeight: 160,
-              maxHeight: 280,
-              overflow: "auto",
-            }}
-          >
-            <h4 style={{ margin: "0 0 10px 0" }}>Histórico de operações</h4>
+          {/* Histórico */}
+          <Card title="Histórico de operações">
             {history.length === 0 ? (
               <div style={{ fontSize: 13, opacity: 0.7 }}>
                 Sem operações por enquanto. Faça uma compra ou venda para começar.
@@ -526,32 +461,105 @@ export default function SimuladorPage() {
                     }}
                   >
                     <span style={{ opacity: 0.6 }}>{t.time}</span>
-                    <span style={{ color: t.side === "Compra" ? "#17c964" : "#f31260" }}>
-                      {t.side}
-                    </span>
+                    <span style={{ color: t.side === "Compra" ? "#17c964" : "#f31260" }}>{t.side}</span>
                     <span>
-                      {t.qty.toFixed(6)} @ {CURRENCY(t.price)}
+                      {t.qty.toFixed(6)} @ {money(t.price)}
                     </span>
-                    <span style={{ opacity: 0.8 }}>{CURRENCY(t.value)}</span>
+                    <span style={{ opacity: 0.8 }}>{money(t.value)}</span>
                   </li>
                 ))}
               </ul>
             )}
-          </div>
+          </Card>
         </section>
       </div>
     </main>
   );
 }
 
-/* =========================
-   Helpers UI
-   ========================= */
+/* ------- UI helpers ------- */
+function Card({ title, children }) {
+  return (
+    <div
+      style={{
+        background: "linear-gradient(180deg,#0c1424 0%, #0b1120 100%)",
+        border: "1px solid rgba(255,255,255,0.06)",
+        borderRadius: 14,
+        padding: 14,
+      }}
+    >
+      <h4 style={{ margin: "0 0 10px 0" }}>{title}</h4>
+      {children}
+    </div>
+  );
+}
+
 function Row({ label, value, valueColor }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
       <span style={{ opacity: 0.75 }}>{label}</span>
       <span style={{ fontWeight: 700, color: valueColor || "white" }}>{value}</span>
     </div>
   );
 }
+
+function Progress({ valuePct, color }) {
+  return (
+    <div
+      style={{
+        height: 8,
+        background: "rgba(255,255,255,0.08)",
+        borderRadius: 999,
+        overflow: "hidden",
+        margin: "4px 0 8px",
+      }}
+    >
+      <div style={{ width: `${valuePct}%`, height: "100%", background: color }} />
+    </div>
+  );
+}
+
+const inputStyle = {
+  width: "100%",
+  padding: "10px 12px",
+  borderRadius: 10,
+  border: "1px solid rgba(255,255,255,0.2)",
+  background: "#0f1830",
+  color: "white",
+  marginBottom: 10,
+};
+
+const btnBuy = (disabled) => ({
+  flex: 1,
+  background: "#17c964",
+  color: "#042312",
+  border: "none",
+  borderRadius: 12,
+  padding: "12px 14px",
+  fontWeight: 700,
+  cursor: disabled ? "not-allowed" : "pointer",
+  opacity: disabled ? 0.6 : 1,
+});
+
+const btnSell = (disabled) => ({
+  flex: 1,
+  background: "#f31260",
+  color: "white",
+  border: "none",
+  borderRadius: 12,
+  padding: "12px 14px",
+  fontWeight: 700,
+  cursor: disabled ? "not-allowed" : "pointer",
+  opacity: disabled ? 0.6 : 1,
+});
+
+const btnReset = {
+  marginTop: 10,
+  width: "100%",
+  background: "#1f2937",
+  color: "white",
+  border: "1px solid rgba(255,255,255,0.15)",
+  borderRadius: 10,
+  padding: "10px 12px",
+  cursor: "pointer",
+};
