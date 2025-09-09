@@ -1,6 +1,8 @@
 // app/layout.js
-import "../styles/globals.css";     // <- caminho relativo (funciona sem alias)
-import "../styles/overrides.css";  // <- caminho relativo (funciona sem alias)
+import "../styles/globals.css";
+import "../styles/overrides.css";
+// novo CSS com realce do menu:
+import "../styles/nav-boost.css";
 
 export const metadata = {
   title: "RadarCrypto.space",
