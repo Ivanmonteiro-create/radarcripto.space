@@ -1,9 +1,8 @@
-// components/Navbar.tsx
 "use client";
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 
 const links = [
   { href: "/", label: "Início" },
@@ -13,9 +12,9 @@ const links = [
   { href: "/contact", label: "Fale com a gente" },
 ];
 
-export default function Navbar() {
+function NavbarContent() {
   const pathname = usePathname();
-  const qs = useSearchParams(); // evita hydration mismatch
+  const qs = useSearchParams();
 
   const active = useMemo(() => pathname, [pathname, qs?.toString()]);
 
@@ -41,5 +40,13 @@ export default function Navbar() {
         </ul>
       </nav>
     </header>
+  );
+}
+
+export default function Navbar() {
+  return (
+    <Suspense fallback={<div className="p-4 text-gray-400">Carregando...</div>}>
+      <NavbarContent />
+    </Suspense>
   );
 }
