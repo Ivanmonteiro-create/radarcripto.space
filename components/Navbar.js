@@ -1,70 +1,45 @@
-'use client';
+// components/Navbar.tsx
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import React from 'react';
+import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
+
+const links = [
+  { href: "/", label: "Início" },
+  { href: "/about", label: "Sobre" },
+  { href: "/plans", label: "Planos" },
+  { href: "/simulator", label: "Acessar simulador" },
+  { href: "/contact", label: "Fale com a gente" },
+];
 
 export default function Navbar() {
   const pathname = usePathname();
+  const qs = useSearchParams(); // evita hydration mismatch
 
-  // Oculta a navbar nas rotas do simulador
-  if (pathname?.startsWith('/simulador')) return null;
-
-  const baseLinkStyle: React.CSSProperties = {
-    display: 'block',
-    padding: '10px 14px',
-    borderRadius: 12,
-    textDecoration: 'none',
-    color: '#e5e7eb',        // cinza claro
-    fontWeight: 600,
-    lineHeight: 1,
-    background: 'transparent',
-    boxShadow: 'none',
-    transition: 'transform .12s ease, opacity .12s ease',
-  };
-
-  const btnGreen: React.CSSProperties = {
-    ...baseLinkStyle,
-    background: '#16a34a',   // verde forte
-    color: '#0b1112',        // contraste no seu tema escuro
-    boxShadow: '0 0 0 1px rgba(22,163,74,.55) inset, 0 6px 18px rgba(22,163,74,.18)',
-    fontSize: 15,
-  };
-
-  const wrapStyle: React.CSSProperties = {
-    position: 'fixed',
-    right: 18,
-    top: 18,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 10,
-    zIndex: 40,
-    userSelect: 'none',
-  };
-
-  const hoverStyle = { transform: 'translateY(-1px)', opacity: 0.95 };
+  const active = useMemo(() => pathname, [pathname, qs?.toString()]);
 
   return (
-    <nav aria-label="Navegação principal" style={wrapStyle}>
-      <Link href="/" style={baseLinkStyle} onMouseEnter={e=>Object.assign(e.currentTarget.style, hoverStyle)} onMouseLeave={e=>Object.assign(e.currentTarget.style, {transform:'none', opacity:'1'})}>
-        Início
-      </Link>
-
-      <Link href="/sobre" style={baseLinkStyle} onMouseEnter={e=>Object.assign(e.currentTarget.style, hoverStyle)} onMouseLeave={e=>Object.assign(e.currentTarget.style, {transform:'none', opacity:'1'})}>
-        Sobre
-      </Link>
-
-      <Link href="/planos" style={btnGreen} onMouseEnter={e=>Object.assign(e.currentTarget.style, hoverStyle)} onMouseLeave={e=>Object.assign(e.currentTarget.style, {transform:'none', opacity:'1'})}>
-        Planos
-      </Link>
-
-      <Link href="/simulador" style={btnGreen} onMouseEnter={e=>Object.assign(e.currentTarget.style, hoverStyle)} onMouseLeave={e=>Object.assign(e.currentTarget.style, {transform:'none', opacity:'1'})}>
-        Acessar simulador
-      </Link>
-
-      <Link href="/contato" style={baseLinkStyle} onMouseEnter={e=>Object.assign(e.currentTarget.style, hoverStyle)} onMouseLeave={e=>Object.assign(e.currentTarget.style, {transform:'none', opacity:'1'})}>
-        Fale com a gente
-      </Link>
-    </nav>
+    <header className="sticky top-0 z-40 border-b border-gray-800 bg-gray-950/90 backdrop-blur">
+      <nav className="mx-auto w-full max-w-6xl px-4 py-3 flex items-center justify-between">
+        <Link href="/" className="font-semibold tracking-wide">
+          RadarCripto
+        </Link>
+        <ul className="flex items-center gap-4 text-sm">
+          {links.map((l) => (
+            <li key={l.href}>
+              <Link
+                href={l.href}
+                className={`px-2 py-1 rounded hover:bg-gray-800 transition ${
+                  active === l.href ? "bg-gray-800" : ""
+                }`}
+              >
+                {l.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </header>
   );
 }
