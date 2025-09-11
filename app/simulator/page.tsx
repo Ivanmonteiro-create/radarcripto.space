@@ -1,115 +1,77 @@
+// app/simulador/page.tsx
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import TradingViewChart from "@/components/TradingViewChart";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Chart from "@/components/Chart";
 import TradePanel from "@/components/TradePanel";
+import FullscreenToggle from "@/components/FullscreenToggle";
+
+// Pares padronizados com a Home
+const PAIRS = [
+  { label: "BTC/USDT", value: "BINANCE:BTCUSDT" },
+  { label: "ETH/USDT", value: "BINANCE:ETHUSDT" },
+  { label: "SOL/USDT", value: "BINANCE:SOLUSDT" },
+  { label: "XRP/USDT", value: "BINANCE:XRPUSDT" },
+  { label: "LINK/USDT", value: "BINANCE:LINKUSDT" },
+  { label: "ADA/USDT", value: "BINANCE:ADAUSDT" },
+  { label: "BNB/USDT", value: "BINANCE:BNBUSDT" },
+  { label: "DOGE/USDT", value: "BINANCE:DOGEUSDT" },
+];
 
 export default function SimulatorPage() {
-  const [isFull, setIsFull] = useState(false);
+  const [pair, setPair] = useState(PAIRS[0].value);
+  const [isFs, setIsFs] = useState(false);
 
-  const enterFull = useCallback(async () => {
-    if (document.fullscreenElement) return;
-    // cobre tudo com Fullscreen API
-    const el = document.getElementById("sim-root");
-    if (el && el.requestFullscreen) {
-      await el.requestFullscreen();
-      setIsFull(true);
-      document.body.classList.add("overflow-hidden");
-    }
-  }, []);
-
-  const exitFull = useCallback(async () => {
-    if (document.fullscreenElement && document.exitFullscreen) {
-      await document.exitFullscreen();
-    }
-    setIsFull(false);
-    document.body.classList.remove("overflow-hidden");
-  }, []);
-
-  // atalhos F (entrar/alternar) e X/Escape (sair)
+  // atalhos de teclado: F para fullscreen, X para sair
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === "f") {
-        if (document.fullscreenElement) exitFull();
-        else enterFull();
+    const onKey = async (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "f" && !document.fullscreenElement) {
+        await document.documentElement.requestFullscreen().catch(() => {});
       }
-      if (e.key.toLowerCase() === "x" || e.key === "Escape") {
-        exitFull();
+      if (e.key.toLowerCase() === "x" && document.fullscreenElement) {
+        await document.exitFullscreen().catch(() => {});
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [enterFull, exitFull]);
-
-  // sai do estado quando o usuário usa ESC nativo
-  useEffect(() => {
-    const onChange = () => setIsFull(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
 
+  const onFsChange = useCallback((active: boolean) => setIsFs(active), []);
+
+  const chartSymbol = useMemo(() => pair, [pair]);
+
   return (
-    <section className="mx-auto max-w-6xl px-4 py-6">
-      {/* Controles topo */}
-      <div className="mb-3 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-200">Simulador</h1>
+    <main className="mx-auto max-w-7xl px-4 py-6">
+      <h1 className="mb-4 text-2xl font-semibold text-gray-200">Simulador</h1>
 
-        <div className="flex items-center gap-2">
-          {!isFull ? (
-            <button
-              onClick={enterFull}
-              className="rounded-lg border border-emerald-600/40 bg-emerald-600/15 px-3 py-1.5 text-emerald-300 hover:bg-emerald-600/25"
-              title="Tela cheia (F)"
-            >
-              ⛶ Tela cheia (F)
-            </button>
-          ) : (
-            <button
-              onClick={exitFull}
-              className="rounded-lg border border-red-500/40 bg-red-600/15 px-3 py-1.5 text-red-300 hover:bg-red-600/25"
-              title="Sair (X)"
-            >
-              ✕ Sair (X)
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Área raiz que entra em Fullscreen */}
-      <div
-        id="sim-root"
-        className={`
-          ${isFull ? "fixed inset-0 z-50 max-w-none px-0 py-0" : ""}
-        `}
-      >
-        {/* GRID principal: gráfico + painel */}
-        <div
-          className={`
-            grid h-[70vh] grid-cols-1 gap-4
-            md:h-[72vh] md:grid-cols-[minmax(0,1fr)_360px]
-            ${isFull ? "h-screen md:h-screen" : ""}
-          `}
+      <div className={isFs ? "hidden" : "mb-4 flex flex-wrap items-center gap-3"}>
+        <label className="text-sm text-gray-400">Par</label>
+        <select
+          className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-gray-200"
+          value={pair}
+          onChange={(e) => setPair(e.target.value)}
         >
-          {/* Gráfico */}
-          <div className="rounded-2xl border border-gray-800 bg-gray-900/50">
-            <div className="h-full w-full">
-              <TradingViewChart symbol="BINANCE:BTCUSDT" interval="5" />
-            </div>
-          </div>
-
-          {/* Painel de trade */}
-          <TradePanel />
-        </div>
+          {PAIRS.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {/* link de retorno (fora do fullscreen) */}
-      {!isFull && (
-        <div className="mt-6">
-          <a href="/" className="text-sm text-emerald-400 hover:text-emerald-300">
-            ← Voltar ao início
-          </a>
-        </div>
-      )}
-    </section>
+      {/* Grid: quando fullscreen, o chart ocupa 100% e o painel some */}
+      <div className={`grid gap-4 ${isFs ? "grid-cols-1" : "lg:grid-cols-3"}`}>
+        <section className={`${isFs ? "" : "lg:col-span-2"} h-[72vh]`}>
+          <Chart symbol={chartSymbol} interval="5" height="100%" />
+        </section>
+
+        <aside className={`${isFs ? "hidden" : "block"}`}>
+          <TradePanel hidden={isFs} />
+        </aside>
+      </div>
+
+      {/* Botão flutuante (ícone) */}
+      <FullscreenToggle onChange={onFsChange} />
+    </main>
   );
 }
