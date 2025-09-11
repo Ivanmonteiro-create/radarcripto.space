@@ -1,4 +1,3 @@
-// app/simulator/page.tsx
 "use client";
 
 import { useMemo, useState } from "react";
@@ -21,7 +20,7 @@ export default function SimulatorPage() {
   const [pair, setPair] = useState(PAIRS[0].symbol);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const selected = useMemo(() => PAIRS.find(p => p.symbol === pair)!, [pair]);
+  const selected = useMemo(() => PAIRS.find((p) => p.symbol === pair)!, [pair]);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6">
@@ -42,6 +41,7 @@ export default function SimulatorPage() {
             ))}
           </select>
 
+          {/* ✅ Correção: usar targetId em vez de target */}
           <FullscreenToggle targetId="chart-root" onChange={setIsFullscreen} />
         </div>
       </div>
@@ -51,7 +51,6 @@ export default function SimulatorPage() {
         <div className="grid grid-cols-12 gap-3">
           {/* Gráfico ocupa mais espaço. Em fullscreen, ocupa 100% */}
           <div className={isFullscreen ? "col-span-12" : "col-span-12 lg:col-span-8"}>
-            {/* Garanta que seu Chart aceite width/height 100% via CSS (sem passar string nos props do TV) */}
             <div className="h-[60vh] w-full lg:h-[70vh]">
               <Chart symbol={selected.symbol} interval="5" />
             </div>
