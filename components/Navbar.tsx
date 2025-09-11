@@ -15,19 +15,31 @@ const links = [
 function NavbarContent() {
   const pathname = usePathname();
   const qs = useSearchParams();
-  const active = useMemo(() => pathname, [pathname, qs?.toString()]);
+  const active = useMemo(() => pathname + qs.toString(), [pathname, qs]);
+
+  const isHome = pathname === "/";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-gray-800 bg-gray-950/90 backdrop-blur">
-      <nav className="mx-auto w-full max-w-6xl px-4 py-3 flex items-center justify-between">
-        <Link href="/" className="font-semibold tracking-wide">RadarCripto</Link>
-        <ul className="flex items-center gap-3 text-sm">
+    <header className="sticky top-0 z-40 border-b border-gray-800 bg-gray-950/80 backdrop-blur">
+      <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+        <Link
+          href="/"
+          className="font-semibold tracking-wide text-lg"
+        >
+          RadarCripto
+        </Link>
+
+        <ul className="flex items-center gap-6 text-sm">
           {links.map((l) => (
             <li key={l.href}>
               <Link
                 href={l.href}
-                className={`px-2 py-1 rounded hover:bg-gray-800 transition ${
-                  active === l.href ? "bg-gray-800 text-white" : "text-gray-300"
+                className={`px-2 py-1 transition ${
+                  isHome
+                    ? "text-emerald-400 hover:text-emerald-300"
+                    : active.startsWith(l.href)
+                    ? "text-emerald-400"
+                    : "text-gray-300 hover:text-gray-100"
                 }`}
               >
                 {l.label}
@@ -42,7 +54,7 @@ function NavbarContent() {
 
 export default function Navbar() {
   return (
-    <Suspense fallback={<div className="p-3 text-gray-400">Carregando…</div>}>
+    <Suspense fallback={<div className="p-4 text-gray-400">Carregando...</div>}>
       <NavbarContent />
     </Suspense>
   );
