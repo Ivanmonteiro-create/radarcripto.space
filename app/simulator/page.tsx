@@ -21,10 +21,16 @@ export default function SimulatorPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const selected = useMemo(() => PAIRS.find((p) => p.symbol === pair)!, [pair]);
 
+  // alturas: vista normal = 72vh; fullscreen = 100vh x 100vw SEM sobras
+  const chartHeight = isFullscreen ? "100vh" : "72vh";
+  const chartWidth = isFullscreen ? "100vw" : "100%";
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-6">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <a href="/" className="text-sm text-emerald-400 hover:underline">Voltar ao início</a>
+        <a href="/" className="text-sm text-emerald-400 hover:underline">
+          Voltar ao início
+        </a>
 
         <div className="flex items-center gap-2">
           <label className="text-sm text-gray-300">Par</label>
@@ -44,24 +50,36 @@ export default function SimulatorPage() {
         </div>
       </div>
 
-      {/* contêiner que entra em fullscreen */}
+      {/* contêiner que entra em fullscreen; no fullscreen removemos bordas/paddings */}
       <div
         id="chart-root"
-        className="rounded-2xl border border-gray-800 bg-gray-900/50 p-3"
+        className={
+          (isFullscreen
+            ? "rounded-none border-0 p-0 m-0"
+            : "rounded-2xl border border-gray-800 p-0") + " bg-transparent"
+        }
       >
-        {/* mesma altura para gráfico e painel -> sem “buracos” */}
-        <div className="grid grid-cols-12 gap-3">
+        {/* grid SEM gap no fullscreen para colar o gráfico nas bordas */}
+        <div className={isFullscreen ? "grid grid-cols-12 gap-0" : "grid grid-cols-12 gap-3"}>
+          {/* gráfico ocupa tudo no fullscreen */}
           <div className={isFullscreen ? "col-span-12" : "col-span-12 lg:col-span-8"}>
-            <div className="h-[72vh] w-full rounded-xl border border-gray-800 bg-gray-900/40 p-2">
-              <div className="h-full w-full">
-                <Chart symbol={selected.symbol} interval="5" />
-              </div>
+            <div
+              className="w-full"
+              style={{
+                height: chartHeight,
+                width: chartWidth,
+              }}
+            >
+              <Chart symbol={selected.symbol} interval="5" />
             </div>
           </div>
 
-          {/* painel some em fullscreen; altura fixa igual à do gráfico */}
+          {/* painel escondido no fullscreen; mesma altura da área do gráfico quando visível */}
           <div className={isFullscreen ? "hidden" : "col-span-12 lg:col-span-4"}>
-            <div className="h-[72vh] rounded-xl border border-gray-800 bg-gray-900/60 p-3">
+            <div
+              className="rounded-xl border border-gray-800 bg-gray-900/60 p-3"
+              style={{ height: chartHeight }}
+            >
               <TradePanel pair={selected.symbol} />
             </div>
           </div>
