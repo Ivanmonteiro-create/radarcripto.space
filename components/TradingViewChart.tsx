@@ -3,9 +3,12 @@
 import { useEffect, useRef } from "react";
 
 type Props = {
-  symbol?: string; // ex: "BINANCE:BTCUSDT"
-  interval?: string; // ex: "5"
-  studies?: string[]; // indicadores
+  symbol?: string;       // ex: "BINANCE:BTCUSDT"
+  interval?: string;     // ex: "5"
+  studies?: string[];    // indicadores
+  height?: number | string; // opcional: força altura
+  width?: number | string;  // opcional: força largura
+  className?: string;       // opcional: classes extras
 };
 
 declare global {
@@ -18,14 +21,21 @@ export default function TradingViewChart({
   symbol = "BINANCE:BTCUSDT",
   interval = "5",
   studies = [],
+  height,
+  width,
+  className = "",
 }: Props) {
   const containerId = useRef(`tv_${Math.random().toString(36).slice(2)}`);
 
   useEffect(() => {
-    // carrega o script apenas no cliente
     const ensureScript = () =>
       new Promise<void>((resolve) => {
-        if (window.TradingView) return resolve();
+        if (typeof window !== "undefined" && window.TradingView) return resolve();
+        const existing = document.querySelector<HTMLScriptElement>('script[src="https://s3.tradingview.com/tv.js"]');
+        if (existing) {
+          existing.onload = () => resolve();
+          return;
+        }
         const s = document.createElement("script");
         s.src = "https://s3.tradingview.com/tv.js";
         s.async = true;
@@ -34,12 +44,10 @@ export default function TradingViewChart({
       });
 
     ensureScript().then(() => {
-      // limpa instância anterior, se houver
       const el = document.getElementById(containerId.current);
-      if (!el) return;
-      el.innerHTML = "";
+      if (!el || !window.TradingView) return;
+      el.innerHTML = ""; // limpa instância anterior
 
-      // cria widget
       /* eslint-disable new-cap */
       new window.TradingView.widget({
         autosize: true,
@@ -62,9 +70,16 @@ export default function TradingViewChart({
       });
       /* eslint-enable */
     });
-
-    // nada para desmontar — o TV gerencia internamente
   }, [symbol, interval, studies]);
 
-  return <div id={containerId.current} className="h-full w-full" />;
+  return (
+    <div
+      id={containerId.current}
+      className={`w-full h-full ${className}`}
+      style={{
+        height: height ?? "100%",
+        width: width ?? "100%",
+      }}
+    />
+  );
 }
