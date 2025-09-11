@@ -1,4 +1,3 @@
-// app/page.tsx
 import Link from "next/link";
 import TickerMarquee from "@/components/TickerMarquee";
 
@@ -6,14 +5,14 @@ export default function HomePage() {
   return (
     <>
       <TickerMarquee />
-      <section className="mx-auto max-w-6xl px-4 py-16 grid md:grid-cols-2 gap-10 items-center">
+      <section className="mx-auto max-w-6xl px-4 py-14 grid md:grid-cols-2 gap-10 items-center">
         <div>
           <h1 className="text-4xl md:text-5xl font-extrabold leading-tight">
             Aprenda de verdade <span className="text-emerald-400">sem perder nada</span>.
           </h1>
           <p className="mt-4 text-gray-300">
             Estude análise técnica com um simulador realista, sem risco de capital.
-            Evolua praticando, com controle de risco e histórico de operações.
+            Evolua praticando com controle de risco e histórico de operações.
           </p>
 
           <div className="mt-8 flex gap-3">
