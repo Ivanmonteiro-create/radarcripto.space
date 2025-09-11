@@ -3,115 +3,84 @@
 import { useCallback, useEffect, useState } from "react";
 
 type Props = {
+  /** id do elemento que vai entrar em tela cheia */
+  targetId: string;
+  /** avisa a página se está em fullscreen (pra esconder o painel) */
   onChange?: (isFullscreen: boolean) => void;
+  className?: string;
 };
 
-function MaxIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M4 9V4h5M20 15v5h-5" />
-      <path d="M4 4l6 6M20 20l-6-6" />
-    </svg>
-  );
-}
-function MinIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M9 4H4v5M15 20h5v-5" />
-      <path d="M4 9l6-6M20 15l-6 6" />
-    </svg>
-  );
-}
-
-export default function FullscreenToggle({ onChange }: Props) {
+export default function FullscreenToggle({ targetId, onChange, className }: Props) {
   const [isFs, setIsFs] = useState(false);
 
-  const getIsFs = () =>
-    !!(
-      document.fullscreenElement ||
-      // @ts-expect-error vendor prefixes
-      document.webkitFullscreenElement ||
-      // @ts-expect-error vendor prefixes
-      document.mozFullScreenElement ||
-      // @ts-expect-error vendor prefixes
-      document.msFullscreenElement
-    );
+  const getTarget = () => document.getElementById(targetId) ?? document.documentElement;
 
-  const exitFs = async () => {
-    try {
-      if (document.exitFullscreen) return await document.exitFullscreen();
-      // @ts-expect-error vendor prefixes
-      if (document.webkitExitFullscreen) return await document.webkitExitFullscreen();
-      // @ts-expect-error vendor prefixes
-      if (document.mozCancelFullScreen) return await document.mozCancelFullScreen();
-      // @ts-expect-error vendor prefixes
-      if (document.msExitFullscreen) return await document.msExitFullscreen();
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  const request = useCallback(() => {
+    const el: any = getTarget();
+    (el.requestFullscreen ||
+      el.webkitRequestFullscreen ||
+      el.msRequestFullscreen ||
+      el.mozRequestFullScreen)?.call(el);
+  }, [targetId]);
 
-  const requestFs = async () => {
-    const el = document.documentElement as any;
-    try {
-      if (el.requestFullscreen) return await el.requestFullscreen();
-      if (el.webkitRequestFullscreen) return await el.webkitRequestFullscreen();
-      if (el.mozRequestFullScreen) return await el.mozRequestFullScreen();
-      if (el.msRequestFullscreen) return await el.msRequestFullscreen();
-      console.warn("Fullscreen API não disponível neste navegador.");
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const toggle = useCallback(async () => {
-    if (getIsFs()) {
-      await exitFs();
-    } else {
-      await requestFs();
-    }
+  const exit = useCallback(() => {
+    const d: any = document;
+    (d.exitFullscreen || d.webkitExitFullscreen || d.msExitFullscreen || d.mozCancelFullScreen)?.call(d);
   }, []);
 
-  useEffect(() => {
-    const handleChange = () => {
-      const v = getIsFs();
-      setIsFs(v);
-      onChange?.(v);
-    };
-    document.addEventListener("fullscreenchange", handleChange);
-    // @ts-expect-error vendor prefixes
-    document.addEventListener("webkitfullscreenchange", handleChange);
-    // @ts-expect-error vendor prefixes
-    document.addEventListener("mozfullscreenchange", handleChange);
-    // @ts-expect-error vendor prefixes
-    document.addEventListener("MSFullscreenChange", handleChange);
+  const refresh = useCallback(() => {
+    const d: any = document;
+    const active =
+      d.fullscreenElement ||
+      d.webkitFullscreenElement ||
+      d.msFullscreenElement ||
+      d.mozFullScreenElement
+        ? true
+        : false;
+    setIsFs(active);
+    onChange?.(active);
+  }, [onChange]);
 
+  const toggle = useCallback(() => {
+    if (isFs) exit();
+    else request();
+  }, [isFs, exit, request]);
+
+  useEffect(() => {
+    const evts = ["fullscreenchange", "webkitfullscreenchange", "mozfullscreenchange", "MSFullscreenChange"] as const;
+    evts.forEach((e) => document.addEventListener(e, refresh));
     const onKey = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() === "f") toggle();
-      if (e.key.toLowerCase() === "x" && getIsFs()) exitFs();
+      if (e.key === "Escape") refresh();
     };
-    window.addEventListener("keydown", onKey);
-
+    document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("fullscreenchange", handleChange);
-      // @ts-expect-error vendor prefixes
-      document.removeEventListener("webkitfullscreenchange", handleChange);
-      // @ts-expect-error vendor prefixes
-      document.removeEventListener("mozfullscreenchange", handleChange);
-      // @ts-expect-error vendor prefixes
-      document.removeEventListener("MSFullscreenChange", handleChange);
-      window.removeEventListener("keydown", onKey);
+      evts.forEach((e) => document.removeEventListener(e, refresh));
+      document.removeEventListener("keydown", onKey);
     };
-  }, [onChange, toggle]);
+  }, [toggle, refresh]);
 
   return (
     <button
-      aria-label={isFs ? "Sair da tela cheia" : "Tela cheia"}
+      type="button"
       onClick={toggle}
-      className="fixed right-4 bottom-4 z-50 rounded-full border border-gray-700 bg-gray-900/80 p-2 text-gray-200 backdrop-blur hover:bg-gray-800"
-      title={isFs ? "Sair da tela cheia (X)" : "Tela cheia (F)"}
+      aria-label={isFs ? "Sair da tela cheia (F)" : "Tela cheia (F)"}
+      title={isFs ? "Sair da tela cheia (F)" : "Tela cheia (F)"}
+      className={
+        "inline-flex h-9 w-9 items-center justify-center rounded-md border border-emerald-600/40 bg-emerald-600/10 text-emerald-400 hover:bg-emerald-600/20 " +
+        (className ?? "")
+      }
     >
-      {isFs ? <MinIcon /> : <MaxIcon />}
+      {/* Ícone inline (sem libs) */}
+      {isFs ? (
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path fill="currentColor" d="M9 3H3v6h2V5h4V3zm12 0h-6v2h4v4h2V3zM5 15H3v6h6v-2H5v-4zm16 0h-2v4h-4v2h6v-6z" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path fill="currentColor" d="M14 3v2h3.59L13 9.59 14.41 11 19 6.41V10h2V3h-7zM3 21h7v-2H6.41L11 14.41 9.59 13 5 17.59V14H3v7z" />
+        </svg>
+      )}
     </button>
   );
 }
