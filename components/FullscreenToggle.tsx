@@ -2,21 +2,25 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-type Props = {
-  /** id do elemento que vai entrar em tela cheia */
+type FullscreenToggleProps = {
+  /** id do contêiner que vai entrar em tela cheia */
   targetId: string;
-  /** avisa a página se está em fullscreen (pra esconder o painel) */
-  onChange?: (isFullscreen: boolean) => void;
+  /** pode passar setIsFullscreen direto aqui */
+  onChange?: React.Dispatch<React.SetStateAction<boolean>>;
   className?: string;
 };
 
-export default function FullscreenToggle({ targetId, onChange, className }: Props) {
+export default function FullscreenToggle({
+  targetId,
+  onChange,
+  className,
+}: FullscreenToggleProps) {
   const [isFs, setIsFs] = useState(false);
 
-  const getTarget = () => document.getElementById(targetId) ?? document.documentElement;
+  const elem = () => document.getElementById(targetId) ?? document.documentElement;
 
   const request = useCallback(() => {
-    const el: any = getTarget();
+    const el: any = elem();
     (el.requestFullscreen ||
       el.webkitRequestFullscreen ||
       el.msRequestFullscreen ||
@@ -25,7 +29,10 @@ export default function FullscreenToggle({ targetId, onChange, className }: Prop
 
   const exit = useCallback(() => {
     const d: any = document;
-    (d.exitFullscreen || d.webkitExitFullscreen || d.msExitFullscreen || d.mozCancelFullScreen)?.call(d);
+    (d.exitFullscreen ||
+      d.webkitExitFullscreen ||
+      d.msExitFullscreen ||
+      d.mozCancelFullScreen)?.call(d);
   }, []);
 
   const refresh = useCallback(() => {
@@ -71,7 +78,7 @@ export default function FullscreenToggle({ targetId, onChange, className }: Prop
         (className ?? "")
       }
     >
-      {/* Ícone inline (sem libs) */}
+      {/* ícone inline – sem dependências */}
       {isFs ? (
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
           <path fill="currentColor" d="M9 3H3v6h2V5h4V3zm12 0h-6v2h4v4h2V3zM5 15H3v6h6v-2H5v-4zm16 0h-2v4h-4v2h6v-6z" />
