@@ -1,4 +1,4 @@
-import Link from "next/link";
+import BackToHome from "@/components/BackToHome";
 
 export default function ContactPage() {
   return (
@@ -12,14 +12,7 @@ export default function ContactPage() {
         ou chame a gente pelas redes.
       </p>
 
-      <div className="mt-8 flex gap-3">
-        <Link href="/plans" className="rounded-lg border border-gray-700 px-4 py-2 hover:bg-gray-800">
-          Ver planos
-        </Link>
-        <Link href="/simulator" className="rounded-lg bg-emerald-600 px-4 py-2 hover:bg-emerald-700">
-          Usar simulador
-        </Link>
-      </div>
+      <BackToHome />
     </section>
   );
 }
