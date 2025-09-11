@@ -8,7 +8,6 @@ export default function TradePanel() {
   const [balance, setBalance] = useState(10000);
 
   function buy() {
-    // stub: integre depois com o store do simulador
     alert(`Comprar ${qty} ${pair}`);
   }
   function sell() {
@@ -21,7 +20,7 @@ export default function TradePanel() {
   }
 
   return (
-    <aside className="rounded-2xl border border-gray-800 bg-gray-900/60 p-4 md:p-5 h-full">
+    <aside className="h-full rounded-2xl border border-gray-800 bg-gray-900/60 p-4 md:p-5">
       <h3 className="mb-4 text-gray-200 font-semibold">Controles de Trade</h3>
 
       <label className="block text-sm text-gray-400 mb-1">Par</label>
@@ -45,7 +44,10 @@ export default function TradePanel() {
       />
 
       <div className="mb-4 text-sm text-gray-400">
-        Saldo (demo): <span className="text-gray-100 font-medium">${balance.toLocaleString()}</span>
+        Saldo (demo):{" "}
+        <span className="text-gray-100 font-medium">
+          ${balance.toLocaleString()}
+        </span>
       </div>
 
       <div className="flex gap-2">
