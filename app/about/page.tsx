@@ -1,11 +1,13 @@
+import BackToHome from "@/components/BackToHome";
+
 export default function AboutPage() {
   return (
     <section className="mx-auto max-w-5xl px-4 py-16">
       <header className="mb-8">
         <h1 className="text-3xl md:text-4xl font-bold">Sobre o RadarCripto</h1>
         <p className="mt-3 text-gray-300 max-w-2xl">
-          Um simulador de trading criado para estudo sério e evolução prática.
-          Treine leitura de gráfico, gestão de risco e execução — sem colocar dinheiro em risco.
+          Um simulador de trading criado para estudo sério e evolução prática. Treine leitura de
+          gráfico, gestão de risco e execução — sem colocar dinheiro em risco.
         </p>
       </header>
 
@@ -35,6 +37,8 @@ export default function AboutPage() {
           </ul>
         </div>
       </div>
+
+      <BackToHome />
     </section>
   );
 }
