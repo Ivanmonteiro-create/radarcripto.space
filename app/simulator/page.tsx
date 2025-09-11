@@ -24,7 +24,8 @@ export default function SimulatorPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-6">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Simulador</h1>
+        <a href="/" className="text-sm text-emerald-400 hover:underline">Voltar ao início</a>
+
         <div className="flex items-center gap-2">
           <label className="text-sm text-gray-300">Par</label>
           <select
@@ -39,12 +40,12 @@ export default function SimulatorPage() {
             ))}
           </select>
 
-          {/* 🔑 Agora tipado: Fullscreen do container abaixo */}
+          {/* agora pode passar setIsFullscreen sem erro */}
           <FullscreenToggle targetId="chart-root" onChange={setIsFullscreen} />
         </div>
       </div>
 
-      {/* Container que entra em fullscreen */}
+      {/* contêiner que entra em fullscreen */}
       <div id="chart-root" className="rounded-2xl border border-gray-800 bg-gray-900/50 p-3">
         <div className="grid grid-cols-12 gap-3">
           <div className={isFullscreen ? "col-span-12" : "col-span-12 lg:col-span-8"}>
@@ -53,7 +54,7 @@ export default function SimulatorPage() {
             </div>
           </div>
 
-          {/* Esconde no fullscreen */}
+          {/* painel some no fullscreen */}
           <div className={isFullscreen ? "hidden" : "col-span-12 lg:col-span-4"}>
             <TradePanel pair={selected.symbol} />
           </div>
