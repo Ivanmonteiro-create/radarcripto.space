@@ -1,60 +1,80 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 type Props = {
-  symbol: string;
-  interval?: string; // ex.: "5", "15", "60"
+  symbol: string;     // ex.: "BTCUSDT" (vamos prefixar BINANCE:)
+  interval?: string;  // ex.: "5", "15", "60"
 };
 
 export default function Chart({ symbol, interval = "5" }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const elRef = useRef<HTMLDivElement>(null);
+
+  // id único que o TradingView exige no campo container_id (string)
+  const containerId = useMemo(
+    () => `tv-${Math.random().toString(36).slice(2)}`,
+    []
+  );
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    const ensureScript = () =>
+      new Promise<void>((resolve) => {
+        const id = "tv-widget-script";
+        let s = document.getElementById(id) as HTMLScriptElement | null;
+        if (s && (window as any).TradingView) return resolve();
+        if (!s) {
+          s = document.createElement("script");
+          s.id = id;
+          s.src = "https://s3.tradingview.com/tv.js";
+          s.async = true;
+          s.onload = () => resolve();
+          document.body.appendChild(s);
+        } else {
+          s.onload = () => resolve();
+        }
+      });
 
-    // carrega script do TradingView uma única vez
-    const scriptId = "tv-script";
-    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
-    const init = () => {
-      // @ts-ignore
-      if (typeof TradingView === "undefined") return;
-      // limpa instância anterior
-      containerRef.current!.innerHTML = "";
+    let cancelled = false;
+
+    ensureScript().then(() => {
+      if (cancelled) return;
+      // limpa qualquer instância se houver
+      const container = document.getElementById(containerId);
+      if (container) container.innerHTML = "";
+
+      // prefixa o exchange para evitar falhas silenciosas
+      const fullSymbol = symbol.includes(":") ? symbol : `BINANCE:${symbol}`;
 
       // @ts-ignore
-      new TradingView.widget({
-        container_id: containerRef.current!,
-        symbol,                  // ex.: "BTCUSDT"
-        interval,                // ex.: "5"
-        autosize: true,          // ocupa 100% do contêiner
+      new (window as any).TradingView.widget({
+        container_id: containerId,
+        symbol: fullSymbol,
+        interval,
+        autosize: true,          // ocupa 100% do contêiner pai
         theme: "dark",
         timezone: "Etc/UTC",
         allow_symbol_change: true,
         hide_side_toolbar: false,
         hide_top_toolbar: false,
         locale: "pt",
-        studies: [],
       });
-    };
-
-    if (!script) {
-      script = document.createElement("script");
-      script.id = scriptId;
-      script.src = "https://s3.tradingview.com/tv.js";
-      script.async = true;
-      script.onload = init;
-      document.body.appendChild(script);
-    } else {
-      init();
-    }
+    });
 
     return () => {
-      // desmonta gráfico ao trocar rota/parâmetros
-      if (containerRef.current) containerRef.current.innerHTML = "";
+      cancelled = true;
+      const container = document.getElementById(containerId);
+      if (container) container.innerHTML = "";
     };
-  }, [symbol, interval]);
+  }, [containerId, symbol, interval]);
 
-  // NENHUMA margem/padding: o autosize usa 100% desse contêiner
-  return <div ref={containerRef} className="h-full w-full m-0 p-0" />;
+  // Nada de margens/paddings aqui — autosize depende do 100% real.
+  return (
+    <div
+      id={containerId}
+      ref={elRef}
+      className="h-full w-full m-0 p-0"
+      // fallback duro pra garantir altura mínima em alguns navegadores
+      style={{ minHeight: 200 }}
+    />
+  );
 }
