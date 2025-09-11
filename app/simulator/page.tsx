@@ -40,23 +40,30 @@ export default function SimulatorPage() {
             ))}
           </select>
 
-          {/* agora pode passar setIsFullscreen sem erro */}
           <FullscreenToggle targetId="chart-root" onChange={setIsFullscreen} />
         </div>
       </div>
 
       {/* contêiner que entra em fullscreen */}
-      <div id="chart-root" className="rounded-2xl border border-gray-800 bg-gray-900/50 p-3">
+      <div
+        id="chart-root"
+        className="rounded-2xl border border-gray-800 bg-gray-900/50 p-3"
+      >
+        {/* mesma altura para gráfico e painel -> sem “buracos” */}
         <div className="grid grid-cols-12 gap-3">
           <div className={isFullscreen ? "col-span-12" : "col-span-12 lg:col-span-8"}>
-            <div className="h-[60vh] w-full lg:h-[70vh]">
-              <Chart symbol={selected.symbol} interval="5" />
+            <div className="h-[72vh] w-full rounded-xl border border-gray-800 bg-gray-900/40 p-2">
+              <div className="h-full w-full">
+                <Chart symbol={selected.symbol} interval="5" />
+              </div>
             </div>
           </div>
 
-          {/* painel some no fullscreen */}
+          {/* painel some em fullscreen; altura fixa igual à do gráfico */}
           <div className={isFullscreen ? "hidden" : "col-span-12 lg:col-span-4"}>
-            <TradePanel pair={selected.symbol} />
+            <div className="h-[72vh] rounded-xl border border-gray-800 bg-gray-900/60 p-3">
+              <TradePanel pair={selected.symbol} />
+            </div>
           </div>
         </div>
       </div>
