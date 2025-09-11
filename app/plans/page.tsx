@@ -1,4 +1,5 @@
 import PlanCard from "@/components/PlanCard";
+import BackToHome from "@/components/BackToHome";
 
 const plans = [
   {
@@ -51,6 +52,8 @@ export default function PlansPage() {
           <PlanCard key={p.name} {...p} />
         ))}
       </div>
+
+      <BackToHome />
     </section>
   );
 }
