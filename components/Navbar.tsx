@@ -22,30 +22,39 @@ function NavbarContent() {
   return (
     <header className="sticky top-0 z-40 border-b border-gray-800 bg-gray-950/80 backdrop-blur">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <Link
-          href="/"
-          className="font-semibold tracking-wide text-lg"
-        >
+        <Link href="/" className="font-semibold tracking-wide text-lg">
           RadarCripto
         </Link>
 
-        <ul className="flex items-center gap-6 text-sm">
-          {links.map((l) => (
-            <li key={l.href}>
-              <Link
-                href={l.href}
-                className={`px-2 py-1 transition ${
-                  isHome
-                    ? "text-emerald-400 hover:text-emerald-300"
-                    : active.startsWith(l.href)
-                    ? "text-emerald-400"
-                    : "text-gray-300 hover:text-gray-100"
-                }`}
-              >
-                {l.label}
-              </Link>
-            </li>
-          ))}
+        <ul className="flex items-center gap-6 text-base font-medium">
+          {links.map((l) => {
+            const isActive = active.startsWith(l.href);
+            const isHighlight = l.label === "Planos" || l.label === "Acessar simulador";
+
+            return (
+              <li key={l.href}>
+                <Link
+                  href={l.href}
+                  className={`
+                    px-3 py-1 transition
+                    ${
+                      isHome
+                        ? isHighlight
+                          ? "text-emerald-400 font-semibold text-lg hover:text-emerald-300"
+                          : "text-emerald-400 hover:text-emerald-300"
+                        : isActive
+                        ? "text-emerald-400"
+                        : isHighlight
+                        ? "text-emerald-400 font-semibold hover:text-emerald-300"
+                        : "text-gray-300 hover:text-gray-100"
+                    }
+                  `}
+                >
+                  {l.label}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </nav>
     </header>
