@@ -20,28 +20,25 @@ const mockData: Ticker[] = [
 ];
 
 export default function TickerMarquee() {
-  const [tickers, setTickers] = useState<Ticker[]>(mockData);
+  const [tickers, setTickers] = useState<Ticker[]>([]);
 
-  // no futuro aqui puxaremos da API real
   useEffect(() => {
     setTickers(mockData);
   }, []);
 
   return (
-    <div className="bg-black text-white overflow-hidden whitespace-nowrap py-2">
-      <div className="animate-marquee flex gap-6 px-4">
-        {tickers.map((ticker) => (
-          <span key={ticker.symbol} className="flex items-center gap-2">
-            <strong>{ticker.symbol}:</strong> ${ticker.price.toLocaleString()}{" "}
-            <span
-              className={`${
-                ticker.change >= 0 ? "text-green-400" : "text-red-400"
-              }`}
-            >
-              {ticker.change}%
+    <div className="border-y border-gray-800 bg-black/90 text-white">
+      <div className="mx-auto max-w-6xl px-4 py-2 overflow-x-auto">
+        <div className="flex gap-6 text-xs md:text-sm min-w-max">
+          {tickers.map((t) => (
+            <span key={t.symbol} className="flex items-center gap-2">
+              <strong>{t.symbol}:</strong> ${t.price.toLocaleString()}
+              <span className={t.change >= 0 ? "text-emerald-400" : "text-red-400"}>
+                {t.change}%
+              </span>
             </span>
-          </span>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
