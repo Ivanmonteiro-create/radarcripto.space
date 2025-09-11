@@ -2,43 +2,45 @@
 
 import { useEffect, useRef } from "react";
 
+type Props = {
+  symbol?: string; // ex: "BINANCE:BTCUSDT"
+  interval?: string; // ex: "5"
+  studies?: string[]; // indicadores
+};
+
 declare global {
   interface Window {
-    TradingView?: any;
+    TradingView: any;
   }
 }
 
-type Props = {
-  symbol?: string;   // ex: "BINANCE:BTCUSDT"
-  interval?: string; // ex: "60" (1h), "5" (5m)
-  locale?: string;   // ex: "br"
-  height?: number;
-};
-
 export default function TradingViewChart({
   symbol = "BINANCE:BTCUSDT",
-  interval = "60",
-  locale = "br",
-  height = 460,
+  interval = "5",
+  studies = [],
 }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerId = useRef(`tv_${Math.random().toString(36).slice(2)}`);
 
   useEffect(() => {
-    const load = () =>
+    // carrega o script apenas no cliente
+    const ensureScript = () =>
       new Promise<void>((resolve) => {
         if (window.TradingView) return resolve();
         const s = document.createElement("script");
         s.src = "https://s3.tradingview.com/tv.js";
+        s.async = true;
         s.onload = () => resolve();
-        document.body.appendChild(s);
+        document.head.appendChild(s);
       });
 
-    let cancelled = false;
-    load().then(() => {
-      if (cancelled || !containerRef.current || !window.TradingView) return;
-      // Limpa render anterior
-      containerRef.current.innerHTML = "";
-      // Cria widget
+    ensureScript().then(() => {
+      // limpa instância anterior, se houver
+      const el = document.getElementById(containerId.current);
+      if (!el) return;
+      el.innerHTML = "";
+
+      // cria widget
+      /* eslint-disable new-cap */
       new window.TradingView.widget({
         autosize: true,
         symbol,
@@ -46,25 +48,23 @@ export default function TradingViewChart({
         timezone: "Etc/UTC",
         theme: "dark",
         style: "1",
-        locale,
-        container_id: containerRef.current,
-        withdateranges: true,
+        locale: "br",
+        enable_publishing: false,
+        hide_legend: false,
         hide_side_toolbar: false,
+        save_image: false,
+        container_id: containerId.current,
+        studies,
         allow_symbol_change: true,
-        studies: [],
+        withdateranges: true,
+        details: false,
+        calendar: false,
       });
+      /* eslint-enable */
     });
-    return () => {
-      cancelled = true;
-      if (containerRef.current) containerRef.current.innerHTML = "";
-    };
-  }, [symbol, interval, locale]);
 
-  return (
-    <div
-      ref={containerRef as any}
-      style={{ height }}
-      className="w-full rounded-lg border border-gray-800 bg-gray-950"
-    />
-  );
+    // nada para desmontar — o TV gerencia internamente
+  }, [symbol, interval, studies]);
+
+  return <div id={containerId.current} className="h-full w-full" />;
 }
