@@ -3,46 +3,50 @@
 import { useEffect, useRef } from "react";
 
 type Props = {
-  symbol: string;          // ex.: "BINANCE:BTCUSDT"
-  interval?: string;       // ex.: "5"
-  height?: number | string;
+  symbol: string;          // ex: "BTCUSDT"
+  interval?: "1" | "3" | "5" | "15" | "30" | "60" | "240" | "D" | "W" | "M";
 };
 
-export default function Chart({ symbol, interval = "5", height = 520 }: Props) {
-  const ref = useRef<HTMLDivElement | null>(null);
+export default function Chart({ symbol, interval = "5" }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const idRef = useRef("tv-" + Math.random().toString(36).slice(2));
 
   useEffect(() => {
-    if (!ref.current) return;
+    const el = containerRef.current;
+    if (!el) return;
 
-    // @ts-ignore - script externo do TradingView
-    const tv = new (window as any).TradingView.widget({
-      autosize: true,
-      symbol,
-      interval,
-      container_id: ref.current.id,
-      theme: "dark",
-      style: "1",
-      locale: "br",
-      hide_top_toolbar: false,
-      hide_legend: false,
-      save_image: false,
-      studies: [],
-    });
+    el.id = idRef.current;
+    el.innerHTML = "";
+
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/tv.js";
+    script.async = true;
+    script.onload = () => {
+      // @ts-ignore - lib global do TradingView
+      new TradingView.widget({
+        autosize: true,
+        symbol: `BINANCE:${symbol}`,
+        interval,
+        timezone: "Etc/UTC",
+        theme: "dark",
+        style: "1",
+        locale: "br",
+        container_id: idRef.current,
+        hide_top_toolbar: false,
+        hide_legend: false,
+        withdateranges: true,
+        allow_symbol_change: true,
+        save_image: false,
+        details: false,
+        calendar: false,
+      });
+    };
+    el.appendChild(script);
 
     return () => {
-      try {
-        // alguns widgets expõem remove()
-        tv?.remove?.();
-      } catch {}
+      if (containerRef.current) containerRef.current.innerHTML = "";
     };
   }, [symbol, interval]);
 
-  return (
-    <div
-      id="tv-container"
-      ref={ref}
-      style={{ width: "100%", height: typeof height === "number" ? `${height}px` : height }}
-      className="rounded-xl border border-gray-800 bg-black/40"
-    />
-  );
+  return <div ref={containerRef} className="h-full w-full" />;
 }
