@@ -1,127 +1,100 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useState } from "react";
+
+// Componentes existentes no seu projeto
 import Chart from "@/components/Chart";
 import TradePanel from "@/components/TradePanel";
 import FullscreenToggle from "@/components/FullscreenToggle";
 
+// Helper para classes (substitui o clsx)
+import { cn } from "@/lib/cn";
+
+// Pares exibidos também na Home — mantenha esta lista igual à da Home
 const PAIRS = [
-  { label: "BTC/USDT", symbol: "BTCUSDT" },
-  { label: "ETH/USDT", symbol: "ETHUSDT" },
-  { label: "SOL/USDT", symbol: "SOLUSDT" },
-  { label: "BNB/USDT", symbol: "BNBUSDT" },
-  { label: "ADA/USDT", symbol: "ADAUSDT" },
-  { label: "XRP/USDT", symbol: "XRPUSDT" },
-  { label: "LINK/USDT", symbol: "LINKUSDT" },
-  { label: "DOGE/USDT", symbol: "DOGEUSDT" },
-];
+  "BTC/USDT",
+  "ETH/USDT",
+  "SOL/USDT",
+  "BNB/USDT",
+  "ADA/USDT",
+  "XRP/USDT",
+  "LINK/USDT",
+  "DOGE/USDT",
+] as const;
 
 export default function SimulatorPage() {
-  const [selected, setSelected] = useState(PAIRS[0]);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  // Detecta entrada/saída de fullscreen
-  useEffect(() => {
-    const onChange = () => {
-      const el = rootRef.current;
-      const inFs =
-        document.fullscreenElement === el ||
-        // @ts-ignore (Safari)
-        document.webkitFullscreenElement === el;
-      setIsFullscreen(!!inFs);
-    };
-    document.addEventListener("fullscreenchange", onChange);
-    // @ts-ignore
-    document.addEventListener("webkitfullscreenchange", onChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", onChange);
-      // @ts-ignore
-      document.removeEventListener("webkitfullscreenchange", onChange);
-    };
-  }, []);
-
-  const toggleFullscreen = async () => {
-    const el = rootRef.current;
-    if (!el) return;
-    if (!isFullscreen) {
-      if (el.requestFullscreen) await el.requestFullscreen();
-      // @ts-ignore
-      else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-    } else {
-      if (document.exitFullscreen) await document.exitFullscreen();
-      // @ts-ignore
-      else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
-    }
-  };
+  const [symbol, setSymbol] = useState<(typeof PAIRS)[number]>("BTC/USDT");
+  const [isFull, setIsFull] = useState(false);
 
   return (
-    <div className="w-full h-[calc(100vh-64px)] overflow-hidden">
-      {/* container que entra em fullscreen */}
-      <div
-        ref={rootRef}
-        className={
-          "relative h-full w-full bg-[#0b0f12] overflow-hidden" +
-          (isFullscreen ? " fixed inset-0 z-50" : "")
-        }
-      >
-        {/* GRID: gráfico ocupa 1fr; painel 380px. Sem gap e sem padding. */}
-        <div
-          className={
-            "h-full w-full grid gap-0 " +
-            (isFullscreen ? "grid-cols-1" : "grid-cols-[minmax(0,1fr)_380px]")
-          }
+    <main className="min-h-[calc(100vh-80px)] w-full px-3 sm:px-4 md:px-6 lg:px-8">
+      {/* topo: voltar e fullscreen */}
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <Link
+          href="/"
+          className="text-emerald-400 hover:text-emerald-300 transition"
         >
-          {/* COLUNA DO GRÁFICO – encosta nas bordas */}
-          <div className="h-full w-full">
-            <div className="h-full w-full m-0 p-0">
-              <Chart symbol={selected.symbol} interval="5" />
+          Voltar ao início
+        </Link>
+
+        {/* Botão compacto de tela cheia (ícone + tecla) */}
+        <FullscreenToggle
+          isFull={isFull}
+          onToggle={() => setIsFull((v) => !v)}
+          className="h-8 w-8"
+          title={isFull ? "Sair da tela cheia (Esc)" : "Tela cheia (F)"}
+        />
+      </div>
+
+      {/* grade principal */}
+      <div
+        className={cn(
+          "grid gap-4",
+          // quando não está full: 12 colunas, gráfico 9, painel 3
+          !isFull && "grid-cols-12",
+          // em full: gráfico sozinho ocupando tudo
+          isFull && "grid-cols-1"
+        )}
+      >
+        {/* coluna do gráfico */}
+        <section
+          className={cn(
+            "rounded-2xl border border-gray-800 bg-gray-900/50 p-2 sm:p-3",
+            // largura quando não-full
+            !isFull && "col-span-12 lg:col-span-9",
+            // remove bordas internas em full para colar nas extremidades
+            isFull && "p-0"
+          )}
+          // garante que o container ocupe a altura disponível
+          style={{ minHeight: isFull ? "calc(100vh - 120px)" : "70vh" }}
+        >
+          <Chart
+            symbol={symbol.replace("/", "")} // ex.: "BTCUSDT"
+            interval="5"
+            // em full, o chart deve preencher completamente
+            fitParent
+          />
+        </section>
+
+        {/* coluna do painel — escondido em tela cheia */}
+        {!isFull && (
+          <aside className="col-span-12 lg:col-span-3">
+            <div className="sticky top-3 rounded-2xl border border-gray-800 bg-gray-900/50 p-3">
+              <TradePanel
+                selectedSymbol={symbol}
+                onChangeSymbol={(s: string) => {
+                  // segurança para aceitar apenas itens da lista
+                  if (PAIRS.includes(s as (typeof PAIRS)[number])) {
+                    setSymbol(s as (typeof PAIRS)[number]);
+                  }
+                }}
+                pairs={PAIRS as unknown as string[]}
+              />
             </div>
-          </div>
-
-          {/* PAINEL – some no fullscreen */}
-          <aside
-            className={
-              "h-full w-[380px] border-l border-gray-800/60 bg-gray-900/30 backdrop-blur" +
-              (isFullscreen ? " hidden" : "")
-            }
-          >
-            <TradePanel
-              symbol={selected.symbol}
-              onSymbolChange={(sym) => {
-                const found = PAIRS.find((p) => p.symbol === sym);
-                if (found) setSelected(found);
-              }}
-              pairs={PAIRS}
-            />
           </aside>
-        </div>
-
-        {/* Toggle de Fullscreen (ícone) */}
-        <div className="absolute top-3 right-4">
-          <FullscreenToggle isFullscreen={isFullscreen} onToggle={toggleFullscreen} />
-        </div>
-
-        {/* Seletor rápido do par (não aparece no fullscreen) */}
-        {!isFullscreen && (
-          <div className="absolute top-3 left-4">
-            <select
-              value={selected.symbol}
-              onChange={(e) => {
-                const found = PAIRS.find((p) => p.symbol === e.target.value);
-                if (found) setSelected(found);
-              }}
-              className="bg-gray-900/70 border border-gray-700 rounded-md px-3 py-1 text-sm outline-none"
-            >
-              {PAIRS.map((p) => (
-                <option key={p.symbol} value={p.symbol}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }
