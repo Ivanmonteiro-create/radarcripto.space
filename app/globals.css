@@ -1,26 +1,17 @@
-/* Simulador: regras especiais quando estiver em tela cheia */
-#sim-root:fullscreen {
-  background: #0b0f13;           /* mantém o fundo escuro */
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-#sim-root:fullscreen .side-panel {
-  display: none !important;      /* esconde o painel no full */
+/* ajustes gerais que mantêm seu visual */
+:root {
+  color-scheme: dark;
 }
-
-#sim-root:fullscreen .chart-card {
-  border: none !important;
-  border-radius: 0 !important;
-  padding: 0 !important;
+html, body {
+  height: 100%;
 }
-
-#sim-root:fullscreen .chart-card > div {
-  border-radius: 0 !important;
+body {
+  @apply bg-gray-950 text-gray-200 antialiased;
 }
-
-/* Opcional: remove qualquer margem horizontal no full */
-#sim-root:fullscreen section {
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  height: 100vh !important;
-  grid-template-columns: 1fr !important;
+a {
+  @apply text-emerald-400 hover:text-emerald-300;
 }
