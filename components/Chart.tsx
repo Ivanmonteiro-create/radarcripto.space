@@ -1,15 +1,20 @@
 "use client";
 
 type Props = {
-  symbol: string;       // ex.: "BTCUSDT"
-  interval?: string;    // "1", "5", "15", "60", etc (opcional)
+  /** Ex.: "BTCUSDT" */
+  symbol: string;
+  /** Ex.: "5" (para 5m), "60" (para 1h). Padrão "5". */
+  interval?: string;
+  className?: string;
 };
 
-export default function Chart({ symbol, interval = "5" }: Props) {
-  // TradingView embed via iframe. Ajuste de corretora “BINANCE:<PAR>”
+export default function Chart({ symbol, interval = "5", className = "" }: Props) {
+  // IMPORTANTÍSSIMO: interval precisa ser string, não boolean!
+  // Se usar <Chart interval /> em JSX, vira true e dá o erro que você viu.
+
   const params = new URLSearchParams({
     symbol: `BINANCE:${symbol}`,
-    interval,         // timeframe inicial; os botões do TV continuam funcionando
+    interval,
     theme: "dark",
     style: "1",
     locale: "pt_BR",
@@ -25,7 +30,7 @@ export default function Chart({ symbol, interval = "5" }: Props) {
   return (
     <iframe
       src={`https://s.tradingview.com/widgetembed/?${params.toString()}`}
-      className="absolute inset-0 w-full h-full"
+      className={`absolute inset-0 w-full h-full ${className}`}
       style={{ border: 0 }}
       allow="clipboard-write; fullscreen"
       allowFullScreen
