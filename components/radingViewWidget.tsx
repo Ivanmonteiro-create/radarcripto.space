@@ -1,37 +1,51 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+
 type Props = {
-  /** Ex.: 'BTCUSDT' */
-  symbol: string;
-  /** Ex.: '5m' (opcional) */
-  interval?: string;
-  /** Ocultar legenda do TradingView (opcional) */
+  symbol: string;          // ex: 'BTCUSDT'
+  interval?: string;       // ex: '5' (minutos)
   hideLegend?: boolean;
-  className?: string;
 };
 
 export default function TradingViewWidget({
   symbol,
-  interval = '5m',
+  interval = '5',
   hideLegend = true,
-  className = '',
 }: Props) {
-  // Embed simples do TradingView: não precisa de libs externas, funciona em qualquer build
-  const src = `https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(
-    `BINANCE:${symbol}`
-  )}&interval=${encodeURIComponent(
-    interval
-  )}&hidesidetoolbar=1&hidetoptoolbar=0&symboledit=1&saveimage=0&theme=dark&studies=[]&hidelegend=${
-    hideLegend ? 1 : 0
-  }`;
+  const ref = useRef<HTMLDivElement | null>(null);
 
-  return (
-    <iframe
-      title="TradingView Chart"
-      className={`w-full h-full rounded-xl ${className}`}
-      src={src}
-      frameBorder="0"
-      allow="clipboard-read; clipboard-write; fullscreen; web-share"
-    />
-  );
+  useEffect(() => {
+    if (!ref.current) return;
+
+    // limpa qualquer embed anterior ao trocar o par
+    ref.current.innerHTML = '';
+
+    const iframe = document.createElement('iframe');
+    const tvSymbol = `${symbol}`; // já vem como 'BTCUSDT'
+
+    // URL do widget avançado
+    const url = new URL('https://s.tradingview.com/widgetembed/');
+    url.searchParams.set('frameElementId', 'tradingview_advanced');
+    url.searchParams.set('symbol', tvSymbol);
+    url.searchParams.set('interval', interval);
+    url.searchParams.set('locale', 'br');
+    url.searchParams.set('timezone', 'Etc/UTC');
+    url.searchParams.set('theme', 'dark');
+    url.searchParams.set('style', '1'); // candles
+    url.searchParams.set('hide_legend', hideLegend ? 'true' : 'false');
+    url.searchParams.set('hide_side_toolbar', 'false');
+    url.searchParams.set('withdateranges', 'true');
+    url.searchParams.set('allow_symbol_change', 'false');
+
+    iframe.src = url.toString();
+    iframe.id = 'tradingview_advanced';
+    iframe.style.border = '0';
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+
+    ref.current.appendChild(iframe);
+  }, [symbol, interval, hideLegend]);
+
+  return <div ref={ref} className="w-full h-full" />;
 }
