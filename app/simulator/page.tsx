@@ -6,6 +6,6 @@ export const metadata = {
 import SimuladorClient from './SimuladorClient';
 
 export default function SimuladorPage() {
-  // Esta página é SERVER (sem "use client")
+  // Página server; o estado fica no Client.
   return <SimuladorClient />;
 }
