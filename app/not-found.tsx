@@ -1,16 +1,19 @@
+// app/not-found.tsx
 import Link from 'next/link';
 
 export default function NotFound() {
   return (
-    <main className="min-h-[60vh] flex flex-col items-center justify-center gap-4 p-6">
-      <h1 className="text-5xl font-bold">404</h1>
-      <p>Página não encontrada.</p>
-      <Link
-        href="/"
-        className="px-4 py-2 rounded-lg border border-emerald-500 text-emerald-400 hover:bg-emerald-500/10 transition"
-      >
-        Voltar ao início
-      </Link>
+    <main className="min-h-[calc(100vh-64px)] grid place-items-center bg-black text-white">
+      <div className="text-center">
+        <div className="text-5xl font-extrabold mb-3">404</div>
+        <p className="text-gray-400 mb-6">Página não encontrada.</p>
+        <Link
+          href="/"
+          className="rounded-md bg-emerald-600 text-black px-4 py-2 font-medium hover:opacity-90"
+        >
+          Voltar ao início
+        </Link>
+      </div>
     </main>
   );
 }
