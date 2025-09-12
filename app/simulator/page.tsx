@@ -1,39 +1,41 @@
-// app/simulador/page.tsx
+// app/simulator/page.tsx
+import TradingViewWidget from "@/components/TradingViewWidget";
+import TradePanel from "@/components/TradePanel";
+
 export const metadata = {
-  title: 'Simulador | RadarCrypto',
-  description: 'Simulador de trading do RadarCrypto',
+  title: "Simulador | RadarCrypto",
+  description: "Simulador de trading do RadarCrypto",
 };
 
-export default function SimuladorPage() {
+export default function SimulatorPage() {
+  // Altura útil da tela (desconta o header do seu layout)
+  const chartHeightClass =
+    "h-[calc(100vh-120px)] sm:h-[calc(100vh-120px)] lg:h-[calc(100vh-120px)]";
+
   return (
-    <main className="min-h-[calc(100vh-64px)] w-full bg-black text-white">
-      <div className="mx-auto max-w-[1600px] px-4 py-8 md:px-6">
-        <h1 className="text-2xl md:text-3xl font-bold mb-6">Simulador</h1>
+    <div className="w-full">
+      <div className="mx-auto max-w-[1400px] px-3 sm:px-6 py-4">
+        {/* GRID: gráfico à esquerda (1fr) e painel à direita (360px fixo) */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
+          {/* GRÁFICO – ocupa tudo, sem bordas sobrando */}
+          <section
+            aria-label="Painel de gráfico"
+            className={`rounded-2xl border border-gray-800/50 bg-black/20 p-0 ${chartHeightClass}`}
+          >
+            <div className="w-full h-full rounded-2xl overflow-hidden">
+              <TradingViewWidget symbol="BINANCE:BTCUSDT" interval="5" />
+            </div>
+          </section>
 
-        {/* Área do gráfico */}
-        <section className="rounded-xl border border-gray-800 bg-[#0b0b0b] p-2 mb-6">
-          <div className="h-[55vh] w-full rounded-lg bg-black" />
-        </section>
-
-        {/* Controles de trade (placeholder) */}
-        <section className="rounded-xl border border-gray-800 bg-[#0b0b0b] p-4">
-          <h2 className="text-lg font-semibold mb-3">Controles de Trade</h2>
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="rounded-lg border border-gray-800 p-3">
-              <div className="text-sm text-gray-400 mb-1">Par</div>
-              <div className="rounded-md bg-black/60 px-3 py-2 border border-gray-800">BTC/USDT</div>
-            </div>
-            <div className="rounded-lg border border-gray-800 p-3">
-              <div className="text-sm text-gray-400 mb-1">Quantidade</div>
-              <div className="rounded-md bg-black/60 px-3 py-2 border border-gray-800">0</div>
-            </div>
-            <div className="flex items-end gap-2">
-              <button className="rounded-md bg-emerald-600 text-black px-4 py-2 font-medium hover:opacity-90">Comprar</button>
-              <button className="rounded-md bg-red-600 px-4 py-2 font-medium hover:opacity-90">Vender</button>
-            </div>
-          </div>
-        </section>
+          {/* CONTROLE DE TRADE – coluna lateral direita */}
+          <aside
+            aria-label="Controles de Trade"
+            className={`rounded-2xl border border-gray-800/50 bg-black/20 p-4 ${chartHeightClass} overflow-auto`}
+          >
+            <TradePanel />
+          </aside>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }
