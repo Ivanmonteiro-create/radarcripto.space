@@ -2,17 +2,18 @@
 
 import { useState } from "react";
 
-type TradePanelProps = {
-  pairs: { label: string; symbol: string }[];
+type Pair = { label: string; symbol: string };
+type Props = {
+  pairs: Pair[];
   selected: string;
   onChangePair: (symbol: string) => void;
 };
 
-export default function TradePanel({ pairs, selected, onChangePair }: TradePanelProps) {
+export default function TradePanel({ pairs, selected, onChangePair }: Props) {
   const [qty, setQty] = useState<number | "">("");
 
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900/60 p-4">
+    <aside className="side-panel rounded-2xl border border-gray-800 bg-gray-900/60 p-4">
       <h2 className="mb-4 text-lg font-semibold text-gray-100">Controles de Trade</h2>
 
       <label className="mb-1 block text-sm text-gray-300">Par</label>
@@ -55,6 +56,6 @@ export default function TradePanel({ pairs, selected, onChangePair }: TradePanel
       </button>
 
       <p className="mt-4 text-xs text-gray-400">Saldo (demo): $10 000</p>
-    </div>
+    </aside>
   );
 }
