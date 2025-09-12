@@ -1,12 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import Chart from "@/components/Chart";
 import TradePanel from "@/components/TradePanel";
 import FullscreenToggle from "@/components/FullscreenToggle";
-import clsx from "clsx";
 
-// mesmos 8 pares que aparecem na home
 const PAIRS = [
   { label: "BTC/USDT", symbol: "BTCUSDT" },
   { label: "ETH/USDT", symbol: "ETHUSDT" },
@@ -23,20 +21,18 @@ export default function SimulatorPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // controla o verdadeiro fullscreen do navegador
+  // Detecta entrada/saída de fullscreen
   useEffect(() => {
-    const el = rootRef.current;
-    if (!el) return;
     const onChange = () => {
+      const el = rootRef.current;
       const inFs =
         document.fullscreenElement === el ||
-        // safari
-        // @ts-ignore
+        // @ts-ignore (Safari)
         document.webkitFullscreenElement === el;
-      setIsFullscreen(inFs);
+      setIsFullscreen(!!inFs);
     };
     document.addEventListener("fullscreenchange", onChange);
-    // @ts-ignore - safari
+    // @ts-ignore
     document.addEventListener("webkitfullscreenchange", onChange);
     return () => {
       document.removeEventListener("fullscreenchange", onChange);
@@ -49,9 +45,8 @@ export default function SimulatorPage() {
     const el = rootRef.current;
     if (!el) return;
     if (!isFullscreen) {
-      // entrar em FS
       if (el.requestFullscreen) await el.requestFullscreen();
-      // @ts-ignore - safari
+      // @ts-ignore
       else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
     } else {
       if (document.exitFullscreen) await document.exitFullscreen();
@@ -61,37 +56,35 @@ export default function SimulatorPage() {
   };
 
   return (
-    // altura total da viewport menos a navbar (ajuste fino se precisar)
     <div className="w-full h-[calc(100vh-64px)] overflow-hidden">
-      {/* wrapper que entra em fullscreen */}
+      {/* container que entra em fullscreen */}
       <div
         ref={rootRef}
-        className={clsx(
-          "relative h-full w-full bg-[#0b0f12] overflow-hidden",
-          isFullscreen && "fixed inset-0 z-50"
-        )}
+        className={
+          "relative h-full w-full bg-[#0b0f12] overflow-hidden" +
+          (isFullscreen ? " fixed inset-0 z-50" : "")
+        }
       >
-        {/* GRID PRINCIPAL: gráfico ocupa 1fr, painel 380px. Em fullscreen o painel some */}
+        {/* GRID: gráfico ocupa 1fr; painel 380px. Sem gap e sem padding. */}
         <div
-          className={clsx(
-            "h-full w-full grid",
-            isFullscreen ? "grid-cols-1" : "grid-cols-[1fr_380px]"
-          )}
-          style={{ gap: 0 }}
+          className={
+            "h-full w-full grid gap-0 " +
+            (isFullscreen ? "grid-cols-1" : "grid-cols-[minmax(0,1fr)_380px]")
+          }
         >
-          {/* COLUNA DO GRÁFICO — sem bordas/sobras */}
+          {/* COLUNA DO GRÁFICO – encosta nas bordas */}
           <div className="h-full w-full">
             <div className="h-full w-full m-0 p-0">
               <Chart symbol={selected.symbol} interval="5" />
             </div>
           </div>
 
-          {/* PAINEL DE TRADE (some no fullscreen) */}
+          {/* PAINEL – some no fullscreen */}
           <aside
-            className={clsx(
-              "h-full w-[380px] border-l border-gray-800/60 bg-gray-900/30 backdrop-blur",
-              isFullscreen && "hidden"
-            )}
+            className={
+              "h-full w-[380px] border-l border-gray-800/60 bg-gray-900/30 backdrop-blur" +
+              (isFullscreen ? " hidden" : "")
+            }
           >
             <TradePanel
               symbol={selected.symbol}
@@ -104,12 +97,12 @@ export default function SimulatorPage() {
           </aside>
         </div>
 
-        {/* BOTÃO DE FULLSCREEN (canto superior direito) */}
+        {/* Toggle de Fullscreen (ícone) */}
         <div className="absolute top-3 right-4">
           <FullscreenToggle isFullscreen={isFullscreen} onToggle={toggleFullscreen} />
         </div>
 
-        {/* seletor rápido do par (fica sobre o gráfico, canto superior esquerdo) */}
+        {/* Seletor rápido do par (não aparece no fullscreen) */}
         {!isFullscreen && (
           <div className="absolute top-3 left-4">
             <select
