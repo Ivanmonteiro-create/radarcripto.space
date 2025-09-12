@@ -1,47 +1,33 @@
-"use client";
-
-import { useState } from "react";
 import Chart from "@/components/Chart";
 import TradePanel from "@/components/TradePanel";
 
-const PAIRS = [
-  { label: "BTC/USDT", symbol: "BINANCE:BTCUSDT" },
-  { label: "ETH/USDT", symbol: "BINANCE:ETHUSDT" },
-  { label: "SOL/USDT", symbol: "BINANCE:SOLUSDT" },
-  { label: "BNB/USDT", symbol: "BINANCE:BNBUSDT" },
-  { label: "ADA/USDT", symbol: "BINANCE:ADAUSDT" },
-  { label: "XRP/USDT", symbol: "BINANCE:XRPUSDT" },
-  { label: "LINK/USDT", symbol: "BINANCE:LINKUSDT" },
-  { label: "DOGE/USDT", symbol: "BINANCE:DOGEUSDT" },
-];
+export const dynamic = "force-dynamic";
 
-export default function SimulatorPage() {
-  const [symbol, setSymbol] = useState(PAIRS[0].symbol);
-
+export default function SimuladorPage() {
   return (
-    // O id 'sim-root' é usado pelo botão de Tela Cheia
-    <main id="sim-root" className="mx-auto w-full max-w-none px-0">
-      {/* GRID ocupa a tela inteira abaixo da navbar */}
-      <section
-        className="
-          grid h-[calc(100vh-64px)]
-          grid-cols-1 gap-4
-          md:grid-cols-[1fr_360px]
-          px-3 md:px-6
-        "
-      >
-        {/* Gráfico: bordas bem sutis; ocupa todo o espaço sobrando */}
-        <div className="chart-card rounded-2xl border border-gray-800 bg-gray-900/30 p-2 md:p-3">
-          <div className="h-full w-full overflow-hidden rounded-xl">
-            <Chart symbol={symbol} interval="5" theme="dark" autosize hideLegend />
+    <main className="flex-1">
+      {/* container full-width, sem sobras laterais */}
+      <section className="mx-auto w-full max-w-[1400px] px-2 md:px-4 py-4">
+        {/* layout principal: gráfico ocupa todo o espaço restante */}
+        <div
+          className="grid gap-4 md:gap-6"
+          style={{ gridTemplateColumns: "1fr 380px" }} // direita = painel fixo
+        >
+          {/* GRÁFICO */}
+          <div
+            className="relative rounded-2xl border border-gray-800 bg-gray-900/40 overflow-hidden"
+            style={{
+              // altura: ocupar quase toda a janela, respeitando o navbar
+              height: "calc(100vh - 7.5rem)", // ajuste fino se desejar
+            }}
+          >
+            <Chart symbol="BTCUSDT" interval="5" />
           </div>
+
+          {/* PAINEL DE TRADE */}
+          <TradePanel />
         </div>
-
-        {/* Painel lateral */}
-        <TradePanel pairs={PAIRS} selected={symbol} onChangePair={setSymbol} />
       </section>
-
-      {/* Nenhum rodapé com links duplicados aqui */}
     </main>
   );
 }
