@@ -2,15 +2,21 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import clsx from 'clsx';
 
-const links = [
+type NavItem = { href: string; label: string };
+
+const links: NavItem[] = [
   { href: '/', label: 'Início' },
   { href: '/sobre', label: 'Sobre' },
   { href: '/planos', label: 'Planos' },
   { href: '/simulador', label: 'Acessar simulador' },
   { href: '/contato', label: 'Fale com a gente' },
 ];
+
+// helper simples para concatenar classes sem clsx
+function cx(...classes: Array<string | false | undefined>) {
+  return classes.filter(Boolean).join(' ');
+}
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -22,20 +28,23 @@ export default function Navbar() {
           RadarCrypto
         </Link>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={clsx(
-                'rounded-md px-3 py-1 text-sm transition',
-                pathname === l.href
-                  ? 'bg-emerald-600 text-black'
-                  : 'text-gray-300 hover:text-white hover:bg-gray-800'
-              )}
-            >
-              {l.label}
-            </Link>
-          ))}
+          {links.map((l) => {
+            const active = pathname === l.href;
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                className={cx(
+                  'rounded-md px-3 py-1 text-sm transition',
+                  active
+                    ? 'bg-emerald-600 text-black'
+                    : 'text-gray-300 hover:text-white hover:bg-gray-800'
+                )}
+              >
+                {l.label}
+              </Link>
+            );
+          })}
         </div>
       </div>
     </nav>
