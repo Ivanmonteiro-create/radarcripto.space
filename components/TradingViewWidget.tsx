@@ -1,51 +1,68 @@
+// components/TradingViewWidget.tsx
 'use client';
 
 import { useEffect, useRef } from 'react';
 
 type Props = {
-  symbol: string;          // ex: 'BTCUSDT'
-  interval?: string;       // ex: '5' (minutos)
+  symbol: string;          // ex: "BINANCE:BTCUSDT"
+  interval?: string;       // ex: "5" (5m), "60" (1h)
   hideLegend?: boolean;
+  height?: number | string;
 };
 
 export default function TradingViewWidget({
   symbol,
   interval = '5',
   hideLegend = true,
+  height = '100%',
 }: Props) {
-  const ref = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!ref.current) return;
+    const scriptId = 'tradingview-widget-script';
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://s3.tradingview.com/tv.js';
+      script.async = true;
+      document.head.appendChild(script);
+    }
 
-    // limpa qualquer embed anterior ao trocar o par
-    ref.current.innerHTML = '';
+    let cancelled = false;
 
-    const iframe = document.createElement('iframe');
-    const tvSymbol = `${symbol}`; // já vem como 'BTCUSDT'
+    function createWidget() {
+      if (cancelled || !containerRef.current || !(window as any).TradingView) return;
 
-    // URL do widget avançado
-    const url = new URL('https://s.tradingview.com/widgetembed/');
-    url.searchParams.set('frameElementId', 'tradingview_advanced');
-    url.searchParams.set('symbol', tvSymbol);
-    url.searchParams.set('interval', interval);
-    url.searchParams.set('locale', 'br');
-    url.searchParams.set('timezone', 'Etc/UTC');
-    url.searchParams.set('theme', 'dark');
-    url.searchParams.set('style', '1'); // candles
-    url.searchParams.set('hide_legend', hideLegend ? 'true' : 'false');
-    url.searchParams.set('hide_side_toolbar', 'false');
-    url.searchParams.set('withdateranges', 'true');
-    url.searchParams.set('allow_symbol_change', 'false');
+      containerRef.current.innerHTML = '';
 
-    iframe.src = url.toString();
-    iframe.id = 'tradingview_advanced';
-    iframe.style.border = '0';
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
+      // @ts-ignore
+      new (window as any).TradingView.widget({
+        autosize: true,
+        symbol,
+        interval,
+        timezone: 'Etc/UTC',
+        theme: 'dark',
+        style: '1',
+        locale: 'en',
+        toolbar_bg: '#000000',
+        hide_top_toolbar: false,
+        hide_legend: hideLegend,
+        container_id: containerRef.current,
+      });
+    }
 
-    ref.current.appendChild(iframe);
+    const timer = setInterval(() => {
+      if ((window as any).TradingView) {
+        clearInterval(timer);
+        createWidget();
+      }
+    }, 100);
+
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
   }, [symbol, interval, hideLegend]);
 
-  return <div ref={ref} className="w-full h-full" />;
+  return <div ref={containerRef} style={{ width: '100%', height }} />;
 }
