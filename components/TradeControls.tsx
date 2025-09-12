@@ -1,83 +1,96 @@
+// components/TradeControls.tsx
 "use client";
 
-import { useState } from "react";
-import { useTrades } from "@/store/useTrades";
-import { useSettings } from "@/store/useSettings";
+type Props = {
+  symbol: string;
+  onChangeSymbol: (s: string) => void;
+  interval: string;
+  onChangeInterval: (i: string) => void;
+  balance?: number;
+};
 
-export default function TradeControls() {
-  const { addTrade, resetTrades } = useTrades();
-  const { balance } = useSettings();
+const PAIRS: { label: string; value: string }[] = [
+  { label: "BTC/USDT", value: "BINANCE:BTCUSDT" },
+  { label: "ETH/USDT", value: "BINANCE:ETHUSDT" },
+  { label: "XRP/USDT", value: "BINANCE:XRPUSDT" },
+  { label: "ADA/USDT", value: "BINANCE:ADAUSDT" },
+  { label: "SOL/USDT", value: "BINANCE:SOLUSDT" },
+  { label: "LINK/USDT", value: "BINANCE:LINKUSDT" },
+  { label: "DOGE/USDT", value: "BINANCE:DOGEUSDT" },
+  { label: "BNB/USDT", value: "BINANCE:BNBUSDT" },
+];
 
-  const [pair, setPair] = useState("BTC/USDT");
-  const [amount, setAmount] = useState(0);
+const INTERVALS = [
+  { label: "1m", value: "1" },
+  { label: "5m", value: "5" },
+  { label: "15m", value: "15" },
+  { label: "1h", value: "60" },
+  { label: "4h", value: "240" },
+  { label: "1D", value: "D" },
+];
 
-  const executeTrade = (type: "buy" | "sell") => {
-    if (amount <= 0) return;
-
-    const trade = {
-      id: Date.now().toString(),
-      pair,
-      type,
-      amount,
-      price: Math.random() * 1000, // placeholder
-      timestamp: Date.now(),
-    };
-
-    addTrade(trade);
-    setAmount(0);
-  };
-
+export default function TradeControls({
+  symbol,
+  onChangeSymbol,
+  interval,
+  onChangeInterval,
+  balance = 10000,
+}: Props) {
   return (
-    <div className="p-4 bg-gray-900 text-white rounded-xl shadow-md space-y-3">
-      <h2 className="text-lg font-semibold">Controles de Trade</h2>
+    <div className="rounded-xl border border-gray-700/60 bg-gray-900/30 p-4">
+      <h2 className="mb-4 text-lg font-semibold text-white">Controles de Trade</h2>
 
-      <div className="space-y-2">
-        <label className="block text-sm">Par</label>
+      <div className="mb-4 space-y-2">
+        <label className="block text-sm text-gray-300">Par</label>
         <select
-          value={pair}
-          onChange={(e) => setPair(e.target.value)}
-          className="w-full px-2 py-1 rounded text-black"
+          value={symbol}
+          onChange={(e) => onChangeSymbol(e.target.value)}
+          className="w-full rounded-md border border-gray-700 bg-gray-800/70 p-2 text-white"
         >
-          <option>BTC/USDT</option>
-          <option>ETH/USDT</option>
-          <option>SOL/USDT</option>
-          <option>BNB/USDT</option>
+          {PAIRS.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
         </select>
       </div>
 
-      <div className="space-y-2">
-        <label className="block text-sm">Quantidade</label>
-        <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(Number(e.target.value))}
-          className="w-full px-2 py-1 rounded text-black"
-        />
+      <div className="mb-6 space-y-2">
+        <label className="block text-sm text-gray-300">Intervalo</label>
+        <select
+          value={interval}
+          onChange={(e) => onChangeInterval(e.target.value)}
+          className="w-full rounded-md border border-gray-700 bg-gray-800/70 p-2 text-white"
+        >
+          {INTERVALS.map((i) => (
+            <option key={i.value} value={i.value}>
+              {i.label}
+            </option>
+          ))}
+        </select>
       </div>
 
-      <div className="flex gap-2">
+      {/* controles básicos (por enquanto desabilitados) */}
+      <div className="mb-3 text-sm text-gray-400">Saldo (demo): ${balance.toLocaleString()}</div>
+
+      <div className="grid grid-cols-2 gap-3">
         <button
-          onClick={() => executeTrade("buy")}
-          className="flex-1 bg-green-600 hover:bg-green-700 px-3 py-2 rounded-lg"
+          disabled
+          className="cursor-not-allowed rounded-md bg-emerald-600/70 px-3 py-2 font-medium text-white"
+          title="Em breve"
         >
           Comprar
         </button>
         <button
-          onClick={() => executeTrade("sell")}
-          className="flex-1 bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg"
+          disabled
+          className="cursor-not-allowed rounded-md bg-rose-600/70 px-3 py-2 font-medium text-white"
+          title="Em breve"
         >
           Vender
         </button>
       </div>
 
-      <button
-        onClick={resetTrades}
-        className="w-full bg-gray-600 hover:bg-gray-700 px-3 py-2 rounded-lg"
-      >
-        Resetar
-      </button>
-
-      <p className="text-sm text-gray-300">Saldo atual: ${balance}</p>
+      <p className="mt-4 text-xs text-gray-400">Execução de ordens e PnL entram na próxima etapa.</p>
     </div>
   );
 }
