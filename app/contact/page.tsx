@@ -1,18 +1,11 @@
-import BackToHome from "@/components/BackToHome";
-
-export default function ContactPage() {
+export default function ContatoPage() {
   return (
-    <section className="mx-auto max-w-3xl px-4 py-16">
-      <h1 className="text-3xl md:text-4xl font-bold mb-4">Fale com a gente</h1>
+    <div className="mx-auto w-full max-w-6xl px-4 py-10">
+      <h1 className="text-3xl font-bold mb-4">Fale com a gente</h1>
       <p className="text-gray-300">
         Dúvidas, sugestões ou parcerias? Envie um e-mail para{" "}
-        <a href="mailto:contato@radarcripto.space" className="underline">
-          contato@radarcripto.space
-        </a>{" "}
-        ou chame a gente pelas redes.
+        <span className="text-emerald-400">contato@radarcrypto.space</span>.
       </p>
-
-      <BackToHome />
-    </section>
+    </div>
   );
 }
