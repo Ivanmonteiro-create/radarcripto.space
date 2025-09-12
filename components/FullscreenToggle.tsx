@@ -1,12 +1,55 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Maximize2, X as Close } from "lucide-react";
 
 type Props = {
   className?: string;
   title?: string;
 };
+
+/** Ícone “tela cheia” (maximize) em SVG inline */
+function IconMaximize({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M15 3h6v6" />
+      <path d="M21 3l-7 7" />
+      <path d="M9 21H3v-6" />
+      <path d="M3 21l7-7" />
+    </svg>
+  );
+}
+
+/** Ícone “X/fechar” em SVG inline */
+function IconClose({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
 
 export default function FullscreenToggle({ className = "h-8 w-8", title }: Props) {
   const [isFull, setIsFull] = useState(false);
@@ -27,7 +70,7 @@ export default function FullscreenToggle({ className = "h-8 w-8", title }: Props
         await document.exitFullscreen();
       }
     } catch {
-      // ignora
+      // silencioso
     }
   };
 
@@ -41,7 +84,7 @@ export default function FullscreenToggle({ className = "h-8 w-8", title }: Props
       }
       aria-label={isFull ? "Sair da tela cheia" : "Tela cheia"}
     >
-      {isFull ? <Close className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+      {isFull ? <IconClose /> : <IconMaximize />}
     </button>
   );
 }
