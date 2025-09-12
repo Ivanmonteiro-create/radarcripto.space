@@ -1,94 +1,84 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
+import { cn } from "@/lib/cn";
 
 type FullscreenToggleProps = {
-  targetId: string;
-  onChange?: (active: boolean) => void;
+  isFull: boolean;
+  onToggle: () => void;
   className?: string;
+  title?: string;
 };
 
+/**
+ * Botão compacto para alternar tela cheia.
+ * - Tecla "F" entra/sai de tela cheia
+ * - Tecla "Esc" sai de tela cheia
+ * - NÃO depende de nenhuma lib de ícones
+ */
 export default function FullscreenToggle({
-  targetId,
-  onChange,
+  isFull,
+  onToggle,
   className,
+  title,
 }: FullscreenToggleProps) {
-  const [active, setActive] = useState(false);
+  // Entrar/Sair de fullscreen via API
+  const toggleFullscreen = () => {
+    if (typeof document === "undefined") return;
 
-  const getTarget = () =>
-    (document.getElementById(targetId) as any) ?? (document.documentElement as any);
+    const isDocFull = !!document.fullscreenElement;
+    if (!isDocFull) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+    }
+    onToggle();
+  };
 
-  const enter = useCallback(() => {
-    const el: any = getTarget();
-    const fn =
-      el.requestFullscreen ||
-      el.webkitRequestFullscreen ||
-      el.msRequestFullscreen ||
-      el.mozRequestFullScreen;
-    fn?.call(el);
-  }, [targetId]);
-
-  const exit = useCallback(() => {
-    const d: any = document;
-    const fn =
-      d.exitFullscreen || d.webkitExitFullscreen || d.msExitFullscreen || d.mozCancelFullScreen;
-    fn?.call(d);
-  }, []);
-
-  const refresh = useCallback(() => {
-    const d: any = document;
-    const isOn =
-      !!(d.fullscreenElement ||
-        d.webkitFullscreenElement ||
-        d.msFullscreenElement ||
-        d.mozFullScreenElement);
-    setActive(isOn);
-    onChange?.(isOn);
-  }, [onChange]);
-
-  const toggle = useCallback(() => {
-    if (active) exit();
-    else enter();
-  }, [active, enter, exit]);
-
+  // Teclas de atalho: F e Esc
   useEffect(() => {
-    const evts = [
-      "fullscreenchange",
-      "webkitfullscreenchange",
-      "mozfullscreenchange",
-      "MSFullscreenChange",
-    ];
-    evts.forEach((e) => document.addEventListener(e, refresh));
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === "f") toggle();
-      if (e.key === "Escape") refresh();
+    const handler = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+      if (e.key === "Escape") {
+        if (document.fullscreenElement) {
+          document.exitFullscreen?.().catch(() => {});
+        }
+        if (isFull) onToggle();
+      }
     };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      evts.forEach((e) => document.removeEventListener(e, refresh));
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [toggle, refresh]);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFull]);
 
   return (
     <button
       type="button"
-      onClick={toggle}
-      aria-label={active ? "Sair da tela cheia (F)" : "Tela cheia (F)"}
-      title={active ? "Sair da tela cheia (F)" : "Tela cheia (F)"}
-      className={
-        "inline-flex h-9 w-9 items-center justify-center rounded-md border border-emerald-600/40 bg-emerald-600/10 text-emerald-400 hover:bg-emerald-600/20 " +
-        (className ?? "")
-      }
+      onClick={toggleFullscreen}
+      aria-label={isFull ? "Sair da tela cheia" : "Tela cheia"}
+      title={title || (isFull ? "Sair da tela cheia (Esc)" : "Tela cheia (F)")}
+      className={cn(
+        // botão pequeno, redondo, com foco/hover
+        "inline-flex items-center justify-center rounded-md border border-gray-700 bg-gray-900/60 px-0 text-emerald-400",
+        "hover:border-emerald-500 hover:text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/40",
+        // tamanhos default caso a página não passe h/w
+        "h-8 w-8",
+        className
+      )}
     >
-      {/* ícone compacto (sem dependências) */}
-      {active ? (
-        <svg viewBox="0 0 24 24" width="18" height="18">
-          <path fill="currentColor" d="M9 3H3v6h2V5h4V3zm12 0h-6v2h4v4h2V3zM5 15H3v6h6v-2H5v-4zm16 0h-2v4h-4v2h6v-6z" />
+      {/* Ícone SVG (sem dependências) */}
+      {isFull ? (
+        // Minimize (sair do fullscreen)
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M9 14H5v4M9 14L4 19M15 10h4V6M15 10l5-5" />
         </svg>
       ) : (
-        <svg viewBox="0 0 24 24" width="18" height="18">
-          <path fill="currentColor" d="M14 3v2h3.59L13 9.59 14.41 11 19 6.41V10h2V3h-7zM3 21h7v-2H6.41L11 14.41 9.59 13 5 17.59V14H3v7z" />
+        // Maximize (entrar em fullscreen)
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M9 5H5v4M9 5L4 10M15 19h4v-4M15 19l5-5" />
         </svg>
       )}
     </button>
