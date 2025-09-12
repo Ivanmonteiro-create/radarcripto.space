@@ -1,15 +1,26 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Tema escuro por padrão */
-:root { color-scheme: dark; }
-
-html, body {
-  @apply bg-gray-950 text-gray-100 antialiased;
-  min-height: 100%;
+/* Simulador: regras especiais quando estiver em tela cheia */
+#sim-root:fullscreen {
+  background: #0b0f13;           /* mantém o fundo escuro */
 }
 
-/* Resets úteis */
-ul { @apply list-none p-0 m-0; }
-a  { @apply transition-colors; }
+#sim-root:fullscreen .side-panel {
+  display: none !important;      /* esconde o painel no full */
+}
+
+#sim-root:fullscreen .chart-card {
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+#sim-root:fullscreen .chart-card > div {
+  border-radius: 0 !important;
+}
+
+/* Opcional: remove qualquer margem horizontal no full */
+#sim-root:fullscreen section {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  height: 100vh !important;
+  grid-template-columns: 1fr !important;
+}
