@@ -1,44 +1,26 @@
+// app/simulador/page.tsx
 'use client';
 
-import { useState } from 'react';
-
-// IMPORTS RELATIVOS — mantém a Home intacta
 import TradingViewWidget from '../../components/TradingViewWidget';
 import TradePanel from '../../components/TradePanel';
 
-const PAIRS = [
-  'BTCUSDT',
-  'ETHUSDT',
-  'XRPUSDT',
-  'BNBUSDT',
-  'SOLUSDT',
-  'ADAUSDT',
-  'LINKUSDT',
-  'DOGEUSDT',
-];
+export const metadata = {
+  title: 'Simulador | RadarCripto',
+};
 
 export default function SimuladorPage() {
-  const [symbol, setSymbol] = useState<string>('BTCUSDT');
-
   return (
-    <main className="w-full h-[100vh] bg-black text-white">
-      <div className="flex h-full w-full gap-4 p-4">
-        {/* GRÁFICO (ocupa todo o espaço restante) */}
-        <section className="flex-1 min-w-0">
-          <div className="h-full w-full rounded-2xl border border-gray-800 bg-gray-900/30 p-2">
-            <TradingViewWidget symbol={symbol} hideLegend />
-          </div>
+    <main className="mx-auto max-w-[1600px] p-4 md:p-6">
+      <div className="grid grid-cols-12 gap-4">
+        {/* Gráfico ocupa tudo que não for o painel à direita */}
+        <section className="col-span-12 lg:col-span-9 rounded-xl border border-gray-800 bg-gray-900/30 p-2">
+          {/* use o par e o intervalo que preferir */}
+          <TradingViewWidget symbol="BINANCE:BTCUSDT" interval="5" hideLegend />
         </section>
 
-        {/* PAINEL DE TRADE (fixo à direita) */}
-        <aside className="w-[360px] shrink-0">
-          <div className="h-full rounded-2xl border border-gray-800 bg-gray-900/30 p-3">
-            <TradePanel
-              pairs={PAIRS}
-              selectedSymbol={symbol}
-              onChangeSymbol={setSymbol}
-            />
-          </div>
+        {/* Painel de trade (mantém seu componente atual) */}
+        <aside className="col-span-12 lg:col-span-3">
+          <TradePanel />
         </aside>
       </div>
     </main>
