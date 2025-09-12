@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 
-// Se você tem alias "@/*" no tsconfig, deixe assim.
-// Se NÃO tiver alias, troque para: import Chart from '../../components/Chart';
-import Chart from '@/components/Chart';
+// Se o seu projeto NÃO usa alias "@/*", troque os imports para caminhos relativos:
+// import TradingViewWidget from '../../components/TradingViewWidget';
+// import TradePanel from '../../components/TradePanel';
+import TradingViewWidget from '@/components/TradingViewWidget';
 import TradePanel from '@/components/TradePanel';
 
 const PAIRS = [
@@ -20,30 +21,27 @@ const PAIRS = [
 
 export default function SimuladorPage() {
   const [symbol, setSymbol] = useState<string>('BTCUSDT');
-  const [interval, setInterval] = useState<string>('5m');
 
   return (
-    <main className="w-full h-[calc(100vh-0px)] bg-black text-white">
-      {/* layout em linha: gráfico ocupa tudo; painel com largura fixa à direita */}
+    <main className="w-full h-[100vh] bg-black text-white">
+      {/* Layout em duas colunas: gráfico preenche tudo; painel à direita com largura fixa */}
       <div className="flex h-full w-full gap-4 p-4">
         {/* GRÁFICO */}
-        <div className="flex-1 min-w-0">
+        <section className="flex-1 min-w-0">
           <div className="h-full w-full rounded-2xl border border-gray-800 bg-gray-900/30 p-2">
-            {/* O Chart.tsx deve aceitar props: symbol, interval, hideLegend (opcional) */}
-            <Chart symbol={symbol} interval={interval} hideLegend />
+            {/* Gráfico sem depender do seu Chart.tsx */}
+            <TradingViewWidget symbol={symbol} hideLegend />
           </div>
-        </div>
+        </section>
 
-        {/* PAINEL DE TRADE – largura fixa, sem sobras */}
+        {/* PAINEL DE TRADE – largura fixa e sem sobras */}
         <aside className="w-[360px] shrink-0">
           <div className="h-full rounded-2xl border border-gray-800 bg-gray-900/30 p-3">
-            {/* O TradePanel.tsx deve aceitar props: selectedSymbol, onChangeSymbol, interval, onChangeInterval */}
+            {/* Passei apenas props seguras: se o seu TradePanel aceitar mais (ex.: interval), adicionamos depois */}
             <TradePanel
+              pairs={PAIRS}
               selectedSymbol={symbol}
               onChangeSymbol={setSymbol}
-              interval={interval}
-              onChangeInterval={setInterval}
-              pairs={PAIRS}
             />
           </div>
         </aside>
