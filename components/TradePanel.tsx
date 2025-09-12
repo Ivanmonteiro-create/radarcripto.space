@@ -1,96 +1,68 @@
 // components/TradePanel.tsx
-'use client';
+"use client";
 
-import { useMemo, useState } from 'react';
+import { useState } from "react";
 
-type Pair = { label: string; value: string };
-
-type Props = {
-  /** Lista de pares. Se não vier, usa o default interno (8 pares). */
-  pairs?: Pair[];
-  /** Símbolo selecionado controlado externamente (opcional). */
-  selectedSymbol?: string;
-  /** Callback quando trocar o símbolo (opcional). */
-  onChangeSymbol?: (value: string) => void;
-};
-
-export default function TradePanel({
-  pairs,
-  selectedSymbol,
-  onChangeSymbol,
-}: Props) {
-  const defaultPairs: Pair[] = useMemo(
-    () => [
-      { label: 'BTC/USDT', value: 'BINANCE:BTCUSDT' },
-      { label: 'ETH/USDT', value: 'BINANCE:ETHUSDT' },
-      { label: 'XRP/USDT', value: 'BINANCE:XRPUSDT' },
-      { label: 'SOL/USDT', value: 'BINANCE:SOLUSDT' },
-      { label: 'LINK/USDT', value: 'BINANCE:LINKUSDT' },
-      { label: 'ADA/USDT', value: 'BINANCE:ADAUSDT' },
-      { label: 'BNB/USDT', value: 'BINANCE:BNBUSDT' },
-      { label: 'DOGE/USDT', value: 'BINANCE:DOGEUSDT' },
-    ],
-    []
-  );
-
-  const list = pairs && pairs.length ? pairs : defaultPairs;
-
-  // estado interno só se não vier controlado
-  const [internalSymbol, setInternalSymbol] = useState<string>(list[0].value);
-  const symbol = selectedSymbol ?? internalSymbol;
-
-  const [balance, setBalance] = useState(10000);
-  const [qty, setQty] = useState<number>(0);
-
-  const handleChange = (val: string) => {
-    if (onChangeSymbol) onChangeSymbol(val);
-    else setInternalSymbol(val);
-  };
+export default function TradePanel() {
+  const [pair, setPair] = useState("BTCUSDT");
+  const [qty, setQty] = useState<number | "">("");
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-      <h2 className="text-lg font-bold mb-4">Controles de Trade</h2>
+    <div className="flex h-full w-full flex-col">
+      <h2 className="text-lg font-semibold mb-4">Controles de Trade</h2>
 
-      <label className="text-sm opacity-80">Par</label>
-      <select
-        className="mt-1 mb-4 w-full rounded-lg bg-gray-800 border border-gray-700 p-2"
-        value={symbol}
-        onChange={(e) => handleChange(e.target.value)}
-      >
-        {list.map((p) => (
-          <option key={p.value} value={p.value}>
-            {p.label}
-          </option>
-        ))}
-      </select>
+      <div className="space-y-3">
+        <label className="block text-sm text-gray-300">
+          Par
+          <select
+            className="mt-1 w-full rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-sm outline-none"
+            value={pair}
+            onChange={(e) => setPair(e.target.value)}
+          >
+            <option>BTCUSDT</option>
+            <option>ETHUSDT</option>
+            <option>XRPUSDT</option>
+            <option>SOLUSDT</option>
+            <option>BNBUSDT</option>
+          </select>
+        </label>
 
-      <label className="text-sm opacity-80">Quantidade</label>
-      <input
-        type="number"
-        value={qty}
-        onChange={(e) => setQty(Number(e.target.value))}
-        className="mt-1 mb-4 w-full rounded-lg bg-gray-800 border border-gray-700 p-2"
-        placeholder="0"
-      />
+        <label className="block text-sm text-gray-300">
+          Quantidade
+          <input
+            className="mt-1 w-full rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-sm outline-none"
+            type="number"
+            min="0"
+            step="0.0001"
+            value={qty}
+            onChange={(e) =>
+              setQty(e.target.value === "" ? "" : Number(e.target.value))
+            }
+            placeholder="0.0000"
+          />
+        </label>
 
-      <div className="flex gap-2 mb-4">
+        <div className="grid grid-cols-2 gap-3 pt-2">
+          <button className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium hover:bg-emerald-500">
+            Comprar
+          </button>
+          <button className="rounded-md bg-red-600 px-3 py-2 text-sm font-medium hover:bg-red-500">
+            Vender
+          </button>
+        </div>
+
         <button
-          onClick={() => setBalance((b) => b - qty)}
-          className="flex-1 bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg"
+          className="mt-2 rounded-md border border-gray-700 px-3 py-2 text-sm hover:bg-gray-800"
+          onClick={() => setQty("")}
         >
-          Comprar
+          Resetar
         </button>
-        <button
-          onClick={() => setBalance((b) => b + qty)}
-          className="flex-1 bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg"
-        >
-          Vender
-        </button>
+
+        <p className="mt-4 text-xs text-gray-400">Saldo (demo): $10.000</p>
       </div>
 
-      <div className="text-sm opacity-80">
-        Saldo (demo): <span className="font-semibold">${balance.toFixed(2)}</span>
-      </div>
+      {/* Espaçador para a coluna ficar “cheia” e rolar se preciso */}
+      <div className="flex-1" />
     </div>
   );
 }
