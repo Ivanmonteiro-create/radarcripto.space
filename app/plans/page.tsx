@@ -1,59 +1,33 @@
-import PlanCard from "@/components/PlanCard";
-import BackToHome from "@/components/BackToHome";
-
-const plans = [
-  {
-    name: "Gratuito",
-    price: "R$ 0/mês",
-    features: [
-      "Simulador com dados locais",
-      "Histórico no navegador",
-      "Gestão de risco básica",
-      "Sem cadastro",
-    ],
-    ctaHref: "/checkout?plan=free",
-  },
-  {
-    name: "Pro",
-    price: "R$ 29/mês",
-    features: [
-      "Tudo do Gratuito",
-      "Indicadores e layouts extras",
-      "Backtests básicos",
-      "Alertas de operação",
-    ],
-    ctaHref: "/checkout?plan=pro",
-    highlight: true,
-    ribbon: "Mais popular",
-  },
-  {
-    name: "Expert",
-    price: "R$ 79/mês",
-    features: [
-      "Tudo do Pro",
-      "Estratégias avançadas",
-      "Salas e mentorias em grupo",
-      "Atendimento dedicado",
-    ],
-    ctaHref: "/checkout?plan=expert",
-  },
-];
-
-export default function PlansPage() {
+export default function PlanosPage() {
   return (
-    <section className="mx-auto max-w-6xl px-4 py-16">
-      <header className="text-center mb-10">
-        <h1 className="text-3xl md:text-4xl font-bold">Planos</h1>
-        <p className="text-gray-300 mt-2">Escolha um plano para estudar, praticar e evoluir.</p>
-      </header>
-
-      <div className="grid md:grid-cols-3 gap-6">
-        {plans.map((p) => (
-          <PlanCard key={p.name} {...p} />
-        ))}
+    <div className="mx-auto w-full max-w-6xl px-4 py-10">
+      <h1 className="text-3xl font-bold mb-6">Planos</h1>
+      <div className="grid gap-6 md:grid-cols-3">
+        <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-6">
+          <h2 className="text-xl font-semibold">Gratuito</h2>
+          <ul className="mt-3 list-disc pl-5 text-gray-300">
+            <li>Simulador com dados locais</li>
+            <li>Histórico no navegador</li>
+            <li>Gestão de risco básica</li>
+          </ul>
+        </div>
+        <div className="rounded-xl border border-emerald-700 bg-emerald-900/10 p-6">
+          <h2 className="text-xl font-semibold text-emerald-300">Pro</h2>
+          <ul className="mt-3 list-disc pl-5 text-gray-300">
+            <li>Tudo do gratuito</li>
+            <li>Backtests básicos</li>
+            <li>Alertas de operação</li>
+          </ul>
+        </div>
+        <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-6">
+          <h2 className="text-xl font-semibold">Expert</h2>
+          <ul className="mt-3 list-disc pl-5 text-gray-300">
+            <li>Tudo do Pro</li>
+            <li>Estudos avançados</li>
+            <li>Atendimento dedicado</li>
+          </ul>
+        </div>
       </div>
-
-      <BackToHome />
-    </section>
+    </div>
   );
 }
