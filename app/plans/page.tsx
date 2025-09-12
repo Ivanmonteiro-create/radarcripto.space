@@ -1,11 +1,10 @@
-// app/planos/page.tsx
-export const metadata = { title: 'Planos | RadarCripto' };
+export const metadata = { title: 'Planos | RadarCrypto' };
 
 export default function PlanosPage() {
   return (
-    <main className="mx-auto max-w-4xl p-6">
-      <h1 className="text-2xl font-bold mb-4">Planos</h1>
-      <p className="opacity-80">Em breve apresentaremos os planos disponíveis.</p>
+    <main className="mx-auto max-w-[1000px] p-6">
+      <h1 className="mb-4 text-2xl font-semibold">Planos</h1>
+      <p className="text-gray-300">Tabela de planos aqui.</p>
     </main>
   );
 }
