@@ -1,4 +1,3 @@
-// app/simulador/SimuladorClient.tsx
 'use client';
 
 import TradingViewWidget from '@/components/TradingViewWidget';
