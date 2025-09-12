@@ -1,70 +1,49 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useMemo } from "react";
+import { usePathname } from "next/navigation";
+import { useMemo } from "react";
+import FullscreenToggle from "@/components/FullscreenToggle";
 
 const links = [
   { href: "/", label: "Início" },
-  { href: "/about", label: "Sobre" },
-  { href: "/plans", label: "Planos" },
-  { href: "/simulator", label: "Acessar simulador" },
-  { href: "/contact", label: "Fale com a gente" },
+  { href: "/sobre", label: "Sobre" },
+  { href: "/planos", label: "Planos" },
+  { href: "/simulador", label: "Acessar simulador" },
+  { href: "/contato", label: "Fale com a gente" },
 ];
 
-function NavbarContent() {
+export default function Navbar() {
   const pathname = usePathname();
-  const qs = useSearchParams();
-  const active = useMemo(() => pathname + qs.toString(), [pathname, qs]);
+  const active = useMemo(() => pathname, [pathname]);
 
-  const isHome = pathname === "/";
+  const onSimulador = active === "/simulador";
 
   return (
     <header className="sticky top-0 z-40 border-b border-gray-800 bg-gray-950/80 backdrop-blur">
-      <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <Link href="/" className="font-semibold tracking-wide text-lg">
-          RadarCripto
-        </Link>
-
-        <ul className="flex items-center gap-6 text-base font-medium">
-          {links.map((l) => {
-            const isActive = active.startsWith(l.href);
-            const isHighlight = l.label === "Planos" || l.label === "Acessar simulador";
-
-            return (
-              <li key={l.href}>
-                <Link
-                  href={l.href}
-                  className={`
-                    px-3 py-1 transition
-                    ${
-                      isHome
-                        ? isHighlight
-                          ? "text-emerald-400 font-semibold text-lg hover:text-emerald-300"
-                          : "text-emerald-400 hover:text-emerald-300"
-                        : isActive
-                        ? "text-emerald-400"
-                        : isHighlight
-                        ? "text-emerald-400 font-semibold hover:text-emerald-300"
-                        : "text-gray-300 hover:text-gray-100"
-                    }
-                  `}
-                >
-                  {l.label}
-                </Link>
-              </li>
-            );
-          })}
+      <nav className="mx-auto w-full max-w-6xl px-4 py-3 flex items-center justify-between">
+        <Link href="/" className="font-semibold tracking-wide text-emerald-400">RadarCrypto</Link>
+        <ul className="flex items-center gap-5 text-sm">
+          {links.map((l) => (
+            <li key={l.href}>
+              <Link
+                href={l.href}
+                className={
+                  "px-2 py-1 rounded hover:bg-gray-800 transition " +
+                  (active === l.href ? "text-emerald-400" : "text-gray-300")
+                }
+              >
+                {l.label}
+              </Link>
+            </li>
+          ))}
+          {onSimulador && (
+            <li className="ml-2">
+              <FullscreenToggle />
+            </li>
+          )}
         </ul>
       </nav>
     </header>
-  );
-}
-
-export default function Navbar() {
-  return (
-    <Suspense fallback={<div className="p-4 text-gray-400">Carregando...</div>}>
-      <NavbarContent />
-    </Suspense>
   );
 }
