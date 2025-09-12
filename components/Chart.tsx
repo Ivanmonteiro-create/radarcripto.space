@@ -1,80 +1,55 @@
 "use client";
+import { useEffect, useRef } from "react";
 
-import { useEffect, useMemo, useRef } from "react";
-
-type Props = {
-  symbol: string;     // ex.: "BTCUSDT" (vamos prefixar BINANCE:)
-  interval?: string;  // ex.: "5", "15", "60"
-};
-
-export default function Chart({ symbol, interval = "5" }: Props) {
-  const elRef = useRef<HTMLDivElement>(null);
-
-  // id único que o TradingView exige no campo container_id (string)
-  const containerId = useMemo(
-    () => `tv-${Math.random().toString(36).slice(2)}`,
-    []
-  );
+export default function Chart({
+  symbol,
+  interval = "5",
+}: {
+  symbol: string;
+  interval?: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const ensureScript = () =>
-      new Promise<void>((resolve) => {
-        const id = "tv-widget-script";
-        let s = document.getElementById(id) as HTMLScriptElement | null;
-        if (s && (window as any).TradingView) return resolve();
-        if (!s) {
-          s = document.createElement("script");
-          s.id = id;
-          s.src = "https://s3.tradingview.com/tv.js";
-          s.async = true;
-          s.onload = () => resolve();
-          document.body.appendChild(s);
-        } else {
-          s.onload = () => resolve();
-        }
-      });
+    if (!containerRef.current) return;
 
-    let cancelled = false;
+    const containerId = "tv_" + Math.random().toString(36).slice(2);
 
-    ensureScript().then(() => {
-      if (cancelled) return;
-      // limpa qualquer instância se houver
-      const container = document.getElementById(containerId);
-      if (container) container.innerHTML = "";
+    // garante 100% no contêiner
+    containerRef.current.id = containerId;
+    containerRef.current.style.width = "100%";
+    containerRef.current.style.height = "100%";
+    containerRef.current.style.margin = "0";
+    containerRef.current.style.padding = "0";
 
-      // prefixa o exchange para evitar falhas silenciosas
-      const fullSymbol = symbol.includes(":") ? symbol : `BINANCE:${symbol}`;
-
-      // @ts-ignore
-      new (window as any).TradingView.widget({
-        container_id: containerId,
-        symbol: fullSymbol,
-        interval,
-        autosize: true,          // ocupa 100% do contêiner pai
-        theme: "dark",
-        timezone: "Etc/UTC",
-        allow_symbol_change: true,
-        hide_side_toolbar: false,
-        hide_top_toolbar: false,
-        locale: "pt",
-      });
+    // @ts-ignore - widget global do TradingView
+    new window.TradingView.widget({
+      autosize: true,               // <— crucial para ocupar tudo
+      container_id: containerId,
+      symbol,                       // ex.: "BINANCE:BTCUSDT"
+      interval,                     // "5"
+      timezone: "Etc/UTC",
+      theme: "dark",
+      style: "1",
+      locale: "br",
+      toolbar_bg: "#0b0f12",
+      hide_side_toolbar: false,
+      withdateranges: true,
+      details: false,
+      allow_symbol_change: false,
+      studies: [],
+      // evita sobra por causa de borda/padding default
+      custom_css_url: "",
     });
 
     return () => {
-      cancelled = true;
-      const container = document.getElementById(containerId);
-      if (container) container.innerHTML = "";
+      if (containerRef.current) containerRef.current.innerHTML = "";
     };
-  }, [containerId, symbol, interval]);
+  }, [symbol, interval]);
 
-  // Nada de margens/paddings aqui — autosize depende do 100% real.
   return (
-    <div
-      id={containerId}
-      ref={elRef}
-      className="h-full w-full m-0 p-0"
-      // fallback duro pra garantir altura mínima em alguns navegadores
-      style={{ minHeight: 200 }}
-    />
+    <div className="h-full w-full">
+      <div ref={containerRef} className="h-full w-full" />
+    </div>
   );
 }
