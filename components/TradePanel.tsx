@@ -1,61 +1,41 @@
 "use client";
 
-import { useState } from "react";
+type Props = { className?: string };
 
-type Pair = { label: string; symbol: string };
-type Props = {
-  pairs: Pair[];
-  selected: string;
-  onChangePair: (symbol: string) => void;
-};
-
-export default function TradePanel({ pairs, selected, onChangePair }: Props) {
-  const [qty, setQty] = useState<number | "">("");
-
+export default function TradePanel({ className = "" }: Props) {
   return (
-    <aside className="side-panel rounded-2xl border border-gray-800 bg-gray-900/60 p-4">
-      <h2 className="mb-4 text-lg font-semibold text-gray-100">Controles de Trade</h2>
+    <aside
+      className={
+        "w-full max-w-[380px] rounded-2xl border border-gray-800 bg-gray-900/50 p-4 " +
+        className
+      }
+    >
+      <h2 className="mb-3 font-semibold text-gray-200">Controles de Trade</h2>
 
-      <label className="mb-1 block text-sm text-gray-300">Par</label>
-      <select
-        value={selected}
-        onChange={(e) => onChangePair(e.target.value)}
-        className="mb-4 w-full rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-gray-100"
-      >
-        {pairs.map((p) => (
-          <option key={p.symbol} value={p.symbol}>
-            {p.label}
-          </option>
-        ))}
-      </select>
+      <div className="space-y-3">
+        <label className="block text-sm text-gray-400">Par</label>
+        <select className="w-full rounded bg-gray-950 border border-gray-800 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+          <option>BTCUSDT</option>
+          <option>ETHUSDT</option>
+          <option>SOLUSDT</option>
+          <option>BNBUSDT</option>
+          <option>ADAUSDT</option>
+          <option>XRPUSDT</option>
+          <option>LINKUSDT</option>
+          <option>DOGEUSDT</option>
+        </select>
 
-      <label className="mb-1 block text-sm text-gray-300">Quantidade</label>
-      <input
-        type="number"
-        inputMode="decimal"
-        value={qty}
-        onChange={(e) => setQty(e.target.value === "" ? "" : Number(e.target.value))}
-        placeholder="0"
-        className="mb-4 w-full rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-gray-100"
-      />
+        <label className="block text-sm text-gray-400">Quantidade</label>
+        <input className="w-full rounded bg-gray-950 border border-gray-800 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500" placeholder="0" />
 
-      <div className="flex gap-2">
-        <button className="flex-1 rounded-md bg-emerald-600 px-3 py-2 font-medium text-white hover:bg-emerald-500">
-          Comprar
-        </button>
-        <button className="flex-1 rounded-md bg-red-600 px-3 py-2 font-medium text-white hover:bg-red-500">
-          Vender
-        </button>
+        <div className="text-sm text-gray-400">Saldo (demo): $10.000</div>
+
+        <div className="grid grid-cols-2 gap-2 pt-2">
+          <button className="rounded bg-emerald-600 hover:bg-emerald-500 px-3 py-2 font-medium">Comprar</button>
+          <button className="rounded bg-red-600 hover:bg-red-500 px-3 py-2 font-medium">Vender</button>
+          <button className="col-span-2 rounded bg-gray-800 hover:bg-gray-700 px-3 py-2">Resetar</button>
+        </div>
       </div>
-
-      <button
-        onClick={() => setQty("")}
-        className="mt-3 w-full rounded-md border border-gray-700 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800"
-      >
-        Resetar
-      </button>
-
-      <p className="mt-4 text-xs text-gray-400">Saldo (demo): $10 000</p>
     </aside>
   );
 }
