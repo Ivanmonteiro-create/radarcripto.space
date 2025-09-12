@@ -4,8 +4,8 @@
 import { useEffect, useRef } from 'react';
 
 type Props = {
-  symbol: string;          // ex: "BINANCE:BTCUSDT"
-  interval?: string;       // ex: "5" (5m), "60" (1h)
+  symbol: string;          // e.g. "BINANCE:BTCUSDT"
+  interval?: string;       // "1", "5", "15", "60"...
   hideLegend?: boolean;
   height?: number | string;
 };
@@ -21,20 +21,18 @@ export default function TradingViewWidget({
   useEffect(() => {
     const scriptId = 'tradingview-widget-script';
     if (!document.getElementById(scriptId)) {
-      const script = document.createElement('script');
-      script.id = scriptId;
-      script.src = 'https://s3.tradingview.com/tv.js';
-      script.async = true;
-      document.head.appendChild(script);
+      const s = document.createElement('script');
+      s.id = scriptId;
+      s.src = 'https://s3.tradingview.com/tv.js';
+      s.async = true;
+      document.head.appendChild(s);
     }
 
-    let cancelled = false;
+    let disposed = false;
 
-    function createWidget() {
-      if (cancelled || !containerRef.current || !(window as any).TradingView) return;
-
+    const build = () => {
+      if (disposed || !containerRef.current || !(window as any).TradingView) return;
       containerRef.current.innerHTML = '';
-
       // @ts-ignore
       new (window as any).TradingView.widget({
         autosize: true,
@@ -44,23 +42,21 @@ export default function TradingViewWidget({
         theme: 'dark',
         style: '1',
         locale: 'en',
-        toolbar_bg: '#000000',
-        hide_top_toolbar: false,
         hide_legend: hideLegend,
         container_id: containerRef.current,
       });
-    }
+    };
 
-    const timer = setInterval(() => {
+    const t = setInterval(() => {
       if ((window as any).TradingView) {
-        clearInterval(timer);
-        createWidget();
+        clearInterval(t);
+        build();
       }
     }, 100);
 
     return () => {
-      cancelled = true;
-      clearInterval(timer);
+      disposed = true;
+      clearInterval(t);
     };
   }, [symbol, interval, hideLegend]);
 
