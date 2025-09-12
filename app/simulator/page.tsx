@@ -1,100 +1,108 @@
 "use client";
 
-import Link from "next/link";
-import { useState } from "react";
-
-// Componentes existentes no seu projeto
+import { useMemo, useState } from "react";
 import Chart from "@/components/Chart";
 import TradePanel from "@/components/TradePanel";
 import FullscreenToggle from "@/components/FullscreenToggle";
+import Link from "next/link";
 
-// Helper para classes (substitui o clsx)
-import { cn } from "@/lib/cn";
-
-// Pares exibidos também na Home — mantenha esta lista igual à da Home
+// pares a partir da Home (8 ativos)
 const PAIRS = [
-  "BTC/USDT",
-  "ETH/USDT",
-  "SOL/USDT",
-  "BNB/USDT",
-  "ADA/USDT",
-  "XRP/USDT",
-  "LINK/USDT",
-  "DOGE/USDT",
-] as const;
+  { label: "BTC/USDT", symbol: "BINANCE:BTCUSDT" },
+  { label: "ETH/USDT", symbol: "BINANCE:ETHUSDT" },
+  { label: "SOL/USDT", symbol: "BINANCE:SOLUSDT" },
+  { label: "BNB/USDT", symbol: "BINANCE:BNBUSDT" },
+  { label: "ADA/USDT", symbol: "BINANCE:ADAUSDT" },
+  { label: "XRP/USDT", symbol: "BINANCE:XRPUSDT" },
+  { label: "LINK/USDT", symbol: "BINANCE:LINKUSDT" },
+  { label: "DOGE/USDT", symbol: "BINANCE:DOGEUSDT" },
+];
 
 export default function SimulatorPage() {
-  const [symbol, setSymbol] = useState<(typeof PAIRS)[number]>("BTC/USDT");
   const [isFull, setIsFull] = useState(false);
+  const [symbol, setSymbol] = useState(PAIRS[0].symbol);
+  const [interval, setInterval] = useState<"1" | "3" | "5" | "15" | "30" | "60" | "120" | "240" | "D" | "W">("5");
+
+  // painel some no modo fullscreen
+  const showSidePanel = !isFull;
+
+  // classes utilitárias para altura máxima útil da janela
+  const pageClass = useMemo(
+    () =>
+      "relative mx-auto w-full max-w-[1400px] px-3 md:px-6 " +
+      (isFull ? "h-screen" : "min-h-[calc(100vh-120px)]"),
+    [isFull]
+  );
 
   return (
-    <main className="min-h-[calc(100vh-80px)] w-full px-3 sm:px-4 md:px-6 lg:px-8">
-      {/* topo: voltar e fullscreen */}
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <Link
-          href="/"
-          className="text-emerald-400 hover:text-emerald-300 transition"
-        >
-          Voltar ao início
-        </Link>
+    <main className={pageClass}>
+      {/* topo: voltar */}
+      {!isFull && (
+        <div className="mb-3 flex items-center justify-between">
+          <Link href="/" className="text-emerald-400 hover:text-emerald-300">
+            Voltar ao início
+          </Link>
 
-        {/* Botão compacto de tela cheia (ícone + tecla) */}
-        <FullscreenToggle
-          isFull={isFull}
-          onToggle={() => setIsFull((v) => !v)}
-          className="h-8 w-8"
-          title={isFull ? "Sair da tela cheia (Esc)" : "Tela cheia (F)"}
-        />
-      </div>
+          <div className="flex items-center gap-2">
+            <label className="hidden text-sm text-gray-300 md:block">Intervalo</label>
+            <select
+              value={interval}
+              onChange={(e) => setInterval(e.target.value as any)}
+              className="h-8 rounded-md border border-gray-700 bg-gray-900 px-2 text-gray-100"
+            >
+              <option value="1">1m</option>
+              <option value="3">3m</option>
+              <option value="5">5m</option>
+              <option value="15">15m</option>
+              <option value="30">30m</option>
+              <option value="60">1h</option>
+              <option value="240">4h</option>
+              <option value="D">1D</option>
+              <option value="W">1W</option>
+            </select>
 
-      {/* grade principal */}
-      <div
-        className={cn(
-          "grid gap-4",
-          // quando não está full: 12 colunas, gráfico 9, painel 3
-          !isFull && "grid-cols-12",
-          // em full: gráfico sozinho ocupando tudo
-          isFull && "grid-cols-1"
-        )}
+            <FullscreenToggle
+              isFull={isFull}
+              onToggle={() => setIsFull((v) => !v)}
+              className="h-8 w-8"
+              title="Tela cheia (F)"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* grid: gráfico ocupa todo o restante, painel fica à direita */}
+      <section
+        className={
+          "grid h-[calc(100vh-160px)] grid-cols-1 gap-4 md:h-[calc(100vh-140px)] " +
+          (showSidePanel ? "md:grid-cols-[1fr_340px]" : "md:grid-cols-1")
+        }
       >
-        {/* coluna do gráfico */}
-        <section
-          className={cn(
-            "rounded-2xl border border-gray-800 bg-gray-900/50 p-2 sm:p-3",
-            // largura quando não-full
-            !isFull && "col-span-12 lg:col-span-9",
-            // remove bordas internas em full para colar nas extremidades
-            isFull && "p-0"
-          )}
-          // garante que o container ocupe a altura disponível
-          style={{ minHeight: isFull ? "calc(100vh - 120px)" : "70vh" }}
-        >
-          <Chart
-            symbol={symbol.replace("/", "")} // ex.: "BTCUSDT"
-            interval="5"
-            // em full, o chart deve preencher completamente
-            fitParent
-          />
-        </section>
+        {/* CARD do gráfico */}
+        <div className="rounded-2xl border border-gray-800 bg-gray-900/40 p-2 md:p-3">
+          <div className="h-full w-full overflow-hidden rounded-xl">
+            <Chart
+              symbol={symbol}
+              interval={interval}
+              theme="dark"
+              autosize
+              hideTopToolbar={false}
+              hideLegend={true}
+            />
+          </div>
+        </div>
 
-        {/* coluna do painel — escondido em tela cheia */}
-        {!isFull && (
-          <aside className="col-span-12 lg:col-span-3">
-            <div className="sticky top-3 rounded-2xl border border-gray-800 bg-gray-900/50 p-3">
-              <TradePanel
-                selectedSymbol={symbol}
-                onChangeSymbol={(s: string) => {
-                  // segurança para aceitar apenas itens da lista
-                  if (PAIRS.includes(s as (typeof PAIRS)[number])) {
-                    setSymbol(s as (typeof PAIRS)[number]);
-                  }
-                }}
-                pairs={PAIRS as unknown as string[]}
-              />
-            </div>
-          </aside>
+        {/* Painel lateral (some no fullscreen) */}
+        {showSidePanel && (
+          <div className="flex flex-col gap-4">
+            <TradePanel
+              pairs={PAIRS}
+              selected={symbol}
+              onChangePair={(s) => setSymbol(s)}
+            />
+          </div>
         )}
-      </div>
+      </section>
     </main>
   );
 }
